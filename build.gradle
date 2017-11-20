@@ -1,0 +1,49 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+repositories {
+  mavenCentral()
+
+  maven {
+	url "https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-snapshot"
+  }
+
+  maven {
+	url "https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-release"
+  }
+}
+
+sourceSets {
+  main {
+	java {
+	  srcDirs 'src'
+	}
+  }
+  test {
+	java {
+	  srcDirs 'test/'
+	}
+  }
+}
+
+eclipse {
+  classpath {
+	downloadSources = true
+	downloadJavadoc = true
+	defaultOutputDir file('build/classes/eclipse')
+	containers "org.eclipse.jdt.launching.JRE_CONTAINER"
+	file {
+	  withXml {
+		it.asNode().children().findAll {
+		  it.attribute("kind") == "con" && it.attribute("path").startsWith("org.eclipse.jdt.launching.JRE_CONTAINER/")
+		}.each { child ->
+		  it.asNode().remove(child)
+		}
+	  }
+	}
+  }
+}
+
+dependencies {
+	compile group: "ca.mcgill.sable", name: "soot", version: "3.0.0-SNAPSHOT"
+}
