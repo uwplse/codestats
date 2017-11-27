@@ -1,0 +1,88 @@
+value:
+  kind: |
+    // $BLOCK$
+    if({0} instanceof soot.jimple.ArrayRef) {
+      return "ArrayRead";
+    } else if({0} instanceof soot.jimple.InstanceFieldRef) {
+      return "InstanceField";
+    } else if({0} instanceof soot.jimple.StaticFieldRef) {
+      return "StaticField";
+    } else if({0} instanceof soot.grimp.internal.GNewInvokeExpr) {
+      return "New";
+    } else if({0} instanceof soot.jimple.internal.AbstractBinopExpr) {
+      return "Binop";
+    } else if({0} instanceof soot.jimple.CastExpr) {
+      return "Cast";
+    } else if({0} instanceof soot.jimple.internal.AbstractUnopExpr) {
+      return "Unop";
+    } else if({0} instanceof soot.jimple.StaticInvokeExpr) {
+      return "StaticInvoke";
+    } else if({0} instanceof soot.jimple.InstanceInvokeExpr) {
+      return "InstanceInvoke";
+    } else if({0} instanceof soot.jimple.rConstant) {
+       return "Constant";
+    } else {
+       return "Other";
+    }
+  type: "{0}.getType().toString()"
+  "null": "{0} instanceof soot.jimple.NullConstant"
+  constant: "{0} instanceof soot.jimple.Constant"
+  "local": "{0} instanceof soot.Local"
+method_call:
+  method: "{0}.getMethodRef()"
+  args: "{0}.getArgs()"
+instance_method_call:
+  receiver: "{0}.getBase()"
+method:
+  declaringClass: "{0}.getDeclaringClass().getName()"
+  returnType: "{0}.getReturnType().toString()"
+  paramTypes: |
+    // $BLOCK$
+    java.util.List<String> toReturn = new java.util.ArrayList<>();
+    for(Type t : {0}.parameterTypes()) {
+      toReturn.add(t.toString());
+    }
+    return toReturn;
+  name: "{0}.name()"
+binop:
+  lop: "{0}.getOp1()"
+  rop: "{0}.getOp2()"
+  operands: "CountUtil.listOf({0}.getOp1(), {0}.getOp2())"
+unop:
+  operand: "{0}.getOp()"
+cast_expr:
+  cast_type: "{0}.getCastType().toString()"
+  castee: "{0}.getOp()"
+fieldref:
+  field: "{0}.getFieldRef()"
+instance_fieldref:
+  base_ptr: "{0}.getBase()"
+field:
+  name: "{0}.name()"
+  type: "{0}.type().toString()"
+  declaringClass: "{0}.declaringClass().getName()"
+  static: "{0}.isStatic()"
+array_ref:
+  index: "{0}.getIndex()"
+  array: "{0}.getBase()"
+alloc:
+  allocType: "{0}.getBaseType().getClassName()"
+  constrArgs: "{0}.getArgs()"
+new_array:
+  size: "{0}.getSize()"
+  baseType: "{0}.getBaseType().toString()"
+stmt:
+  kind: |
+    // $BLOCK$
+    if({0} instanceof soot.jimple.AssignStmt) {
+       return "Assign";
+    } else if({0} instanceof soot.jimple.InvokeStmt) {
+       return "Invoke";
+    } else {
+       return "Other";
+    }
+invoke_stmt:
+  method_call: "{0}.getInvokeExpr()"
+assign_stmt:
+  lhs: "{0}.getLeftOp()"
+  rhs: "{0}.getRightOp()"

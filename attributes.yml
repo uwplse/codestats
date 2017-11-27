@@ -1,0 +1,97 @@
+value:
+  type: "soot.Value"
+  attributes:
+    - [ "kind", "STRING" ]
+    - [ "type", "STRING" ]
+  traits:
+    - "null"
+    - "constant"
+    - "local"
+method_call:
+  type: "soot.jimple.InvokeExpr"
+  extends: "value"
+  attributes:
+    - [ "*args", "value" ]
+    - "method"
+instance_method_call:
+  type: "soot.jimple.InstanceInvokeExpr"
+  extends: method_call
+  attributes:
+    - [ "receiver", "value" ]
+method:
+  type: "soot.SootMethodRef"
+  attributes:
+    - [ "declaringClass", "STRING" ]
+    - [ "returnType", "STRING" ]
+    - [ "*paramTypes", "STRING" ]
+    - [ "name", "STRING" ]
+binop:
+  extends: value
+  type: "soot.jimple.internal.AbstractBinopExpr"
+  attributes:
+    - [ "*operands", "value" ]
+    - [ "lop", "value" ]
+    - [ "rop", "value" ]
+unop:
+  extends: value
+  type: "soot.jimple.internal.AbstractUnopExpr"
+  attributes:
+    - [ "operand", "value" ]
+cast_expr:
+  type: "soot.jimple.CastExpr"
+  extends: value
+  attributes:
+    - [ "cast_type", "STRING" ]
+    - [ "castee", "value" ]
+fieldref:
+  type: "soot.jimple.FieldRef"
+  extends: value
+  attributes:
+    - "field"
+instance_fieldref:
+  type: "soot.jimple.InstanceFieldRef"
+  extends: fieldref
+  attributes:
+    - [ "base_ptr", "value" ]
+field:
+  type: "soot.SootFieldRef"
+  attributes:
+    - [ "type", "STRING" ]
+    - [ "name", "STRING" ]
+    - [ "declaringClass", "STRING" ]
+  traits:
+    - "static"
+array_ref:
+  type: "soot.jimple.ArrayRef"
+  extends: "value"
+  attributes:
+    - [ "index", "value" ]
+    - [ "array", "value" ]
+alloc:
+  type: "soot.grimp.internal.GNewInvokeExpr"
+  extends: "value"
+  attributes:
+    - [ "allocType", "STRING" ]
+    - [ "*constrArgs", "value" ]
+new_array:
+  type: "soot.jimple.NewArrayExpr"
+  extends: "value"
+  attributes:
+    - [ "size", "value" ]
+    - [ "baseType", "STRING" ]
+
+stmt:
+  type: "soot.Stmt"
+  attributes:
+    - [ "kind", "STRING" ]
+invoke_stmt:
+  type: "soot.jimple.InvokeStmt"
+  extends: "stmt"
+  attributes:
+    - method_call
+assign_stmt:
+  extends: stmt
+  type: "soot.jimple.AssignStmt"
+  attributes:
+    - [ "lhs", "value" ]
+    - [ "rhs", "value" ]
