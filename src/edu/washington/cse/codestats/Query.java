@@ -5,4 +5,5 @@ public interface Query {
 	String deriving();
 	String name();
 	QueryTarget target();
+	Metric metric();
 }
