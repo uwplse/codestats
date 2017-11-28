@@ -1,0 +1,98 @@
+PARSER_BEGIN(QueryParser)
+
+package edu.washington.cse.codestats;
+
+import edu.washington.cse.codestats.*;
+
+public class QueryParser {
+    static List<Query> parse(InputStream f) throws ParseException, TokenMgrError {
+         QueryParser parser = new QueryParser(f);
+         return parser.Start();
+    }
+}
+
+PARSER_END(QueryParser)
+
+SKIP : { " " | "\t" | "\n" | "\r" }
+
+TOKEN :
+{
+  < EXISTS : "exists">
+| < COUNT : "count">
+| < STMT : "statement">
+| < EXPR : "expression">
+| < WITHIN : "within">
+| < WHERE : "where">
+| < AND : "and" >
+| < OR : "or" >
+| < IS : "is" >
+| < IN : "in" >
+| < NOT : "not" >
+| < ANY : "[?]" >
+| < ALL : "[*]" >
+| < THIS : "[0]" >
+| < IDENT : (["A"-"Z", "a"-"z", "_"])+ >
+}
+
+List<Query> program() :
+{
+    List<Query> blocks = new ArrayList();
+    Query block;
+}
+{
+    ((block = block()) { blocks.add(block); })* <EOF> { return blocks; }
+}
+
+Query block() :
+{
+    Token name;
+    Token deriving = null;
+    Metric metric;
+    QueryTarget target;
+    PredicateMirror pred;
+}
+{
+    (name = <IDENT>) ":" (<EXISTS> { metric = Metric.EXISTS; } | <COUNT> { metric = Metric.SUM; })
+    (<EXPR> { target = EXPRESSION; } | <STMT> { target = STATEMENT; })
+    <IDENT> [<WITHIN> (deriving = <IDENT>)] <WHERE> "{" (pred = Predicate()) "}"
+    { return new Query(name.image, deriving == null ? null : deriving.image, metric, target, pred); }
+}
+
+PredicateMirror Predicate() :
+{
+    PredicateMirror pred;
+}
+{
+    (pred = conjunction())
+    { return pred; }
+}
+
+PredicateMirror conjunction() :
+{
+    List<PredicateMirror> children = new ArrayList<PredicateMirror>();
+    PredicateMirror child;
+}
+{
+    (child = disjunction()) { children.add(child); }
+    (<AND> (child = disjunction()) { children.add(child); } )*
+    { return new PredicateMirror(PredicateMirror.PredicateType.AND, children); }
+}
+
+PredicateMirror disjunction() :
+{
+    List<PredicateMirror> children = new ArrayList<PredicateMirror>();
+    PredicateMirror child;
+}
+{
+    (child = atom()) { children.add(child); }
+    (<OR> (child = atom()) { children.add(child); } )*
+    { return new PredicateMirror(PredicateMirror.PredicateType.OR, children); }
+}
+
+PredicateMirror atom() :
+{}
+{
+    <IDENT> ( "." <IDENT> )* [ <ANY> | <ALL> | <THIS> ] <IS> (<NOT>)?
+    (<IDENT> ( "." <IDENT> )* | <IN> "[" <IDENT> ( "." <IDENT> )* ( "," <IDENT> ("." <IDENT> )* )* "]" )
+    { return null; }
+}
