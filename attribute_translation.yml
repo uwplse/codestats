@@ -47,7 +47,12 @@ method:
 binop:
   lop: "{0}.getOp1()"
   rop: "{0}.getOp2()"
-  operands: "CountUtil.listOf({0}.getOp1(), {0}.getOp2())"
+  operands: |
+    // $BLOCK$
+    java.util.List<Value> toReturn = new java.util.ArrayList<>();
+    toReturn.add({0}.getOp1());
+    toReturn.add({1}.getOp2());
+    return toReturn;
 unop:
   operand: "{0}.getOp()"
 cast_expr:

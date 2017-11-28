@@ -1,15 +1,23 @@
 package edu.washington.cse.codestats;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
@@ -18,11 +26,15 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
+import org.apache.commons.io.IOUtils;
+
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
 import edu.washington.cse.codestats.PredicateAtom.Type;
 import edu.washington.cse.codestats.PredicateMirror.PredicateType;
+import edu.washington.cse.codestats.hadoop.StatMapper;
+import edu.washington.cse.codestats.hadoop.StatReducer;
 import fj.F2;
 
 public class Compiler {
@@ -53,7 +65,11 @@ public class Compiler {
 		TRAITS.put("array_ref", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
 		TRAITS.put("array_ref", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
 		TRAITS.put("array_ref", "local", new InlineTranslator("{0} instanceof soot.Local"));
-		ATTR.put("binop", "operands", new InlineTranslator("CountUtil.listOf({0}.getOp1(), {0}.getOp2())", "value"));
+		ATTR.put("binop", "operands", new BlockTranslator("soot.jimple.internal.AbstractBinopExpr", "java.util.List<soot.Value>", "// $BLOCK$\n" +
+				"java.util.List<Value> toReturn = new java.util.ArrayList<>();\n" +
+				"toReturn.add({0}.getOp1());\n" +
+				"toReturn.add({1}.getOp2());\n" +
+				"return toReturn;\n", "value"));
 		ATTR.put("binop", "lop", new InlineTranslator("{0}.getOp1()", "value"));
 		ATTR.put("binop", "rop", new InlineTranslator("{0}.getOp2()", "value"));
 		TYPE_TABLE.put("binop", "soot.jimple.internal.AbstractBinopExpr");
@@ -317,9 +333,9 @@ public class Compiler {
 				final String elemType = t.getOutputType();
 				final String elemJavaType = TYPE_TABLE.get(elemType);
 				final String toIterate = t.translate(casted, containingType, currAttr, ctxt);
-				
+				this.addForallExists(ctxt);
 				final String perElemPred = this.translateLoop(attributeList.subList(i+2, attributeList.size()), ctxt, "arg", elemType, cont);
-				return String.format("fj.data.Stream.iterableStream(%s).forall(new fj.F<%s, Boolean>() { public Boolean f(%s arg) { return %s; } })",
+				return String.format("this.forallExists(%s, new fj.F<%s, Boolean>() { public Boolean f(%s arg) { return %s; } })",
 					toIterate, elemJavaType, elemJavaType, perElemPred
 				);
 			} else if(i == attributeList.size() - 2 && attributeList.get(i+1).equals("length")) {
@@ -335,17 +351,91 @@ public class Compiler {
 		return cont.f(accum, currType);
 	}
 
+	private void addForallExists(final CompileContext ctxt) {
+		ctxt.addUtilityMethod("forallExists", "public <T> boolean forallExists(java.lang.Iterable<T> toStream, fj.F<T, Boolean> pred) {\n" +
+				"fj.data.Stream<T> stream = fj.data.Stream.iterableStream(toStream);\n" +
+				"return stream.isNotEmpty() && stream.forall(pred);\n" +
+				"}\n");
+	}
+
 	private boolean isIndex(final String string) {
 		return string.equals("*");
 	}
 	
 	public static void main(final String[] args) {
-    final StringBuilder sb = new StringBuilder(64);
+		final List<Query> prog = getProgram();
+    compileProgram(prog);
+	}
+
+	private static File compileProgram(final List<Query> prog) {
+		final StringBuilder sb = new StringBuilder(64);
     sb.append("package codestats;\n");
-    sb.append("public class QueryInterpreter$Impl implements edu.washington.cse.codestats.QueryInterpreter {\n");
+    sb.append("public class QueryInterpreterImpl implements edu.washington.cse.codestats.QueryInterpreter {\n");
     final CompileContext context = new CompileContext();
     final Compiler c = new Compiler();
-    final List<Query> prog = new ArrayList<>();
+    
+    final List<Query> stmtQueries = new ArrayList<>(); 
+    final List<Query> exprQueries = new ArrayList<>();
+    for(final Query q : prog) {
+    	if(q.target() == QueryTarget.STATEMENT) {
+    		stmtQueries.add(q);
+    	} else {
+    		exprQueries.add(q);
+    	}
+    }
+    addInterpreter(sb, context, c, exprQueries, "soot.Value", "value");
+    addInterpreter(sb, context, c, stmtQueries, "soot.jimple.Stmt", "stmt");
+    context.dumpHelperMethods(sb); 
+    sb.append("}\n");
+
+    final File queryImplSource = new File("tmp/codestats/QueryInterpreterImpl.java");
+		if(queryImplSource.getParentFile().exists() || queryImplSource.getParentFile().mkdirs()) {
+			try {
+				Writer writer = null;
+				try {
+					writer = new FileWriter(queryImplSource);
+					writer.write(sb.toString());
+					writer.flush();
+				} finally {
+					try {
+						writer.close();
+					} catch (final Exception e) {
+					}
+				}
+
+				/** Compilation Requirements *********************************************************************************************/
+				final DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+				final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+				final StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
+
+				// This sets up the class path that the compiler will use.
+				// I've added the .jar file that contains the DoStuff interface within
+				// in it...
+				final List<String> optionList = new ArrayList<String>();
+				optionList.add("-classpath");
+				optionList.add(System.getProperty("java.class.path"));
+
+				final Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(queryImplSource));
+				final JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, optionList, null, compilationUnit);
+				/********************************************************************************************* Compilation Requirements **/
+				if(task.call()) {
+					/************************************************************************************************* Load and execute **/
+				} else {
+					for(final Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+						System.out.println(diagnostic.getMessage(null));
+						System.out.format("Error on line %d in %s%n", diagnostic.getLineNumber(), diagnostic.getSource().toUri());
+					}
+				}
+				fileManager.close();
+			} catch (final IOException exp) {
+				exp.printStackTrace();
+			}
+		}
+		return new File("tmp/codestats/QueryInterpreterImpl.class");
+	}
+
+	private static List<Query> getProgram() {
+		final List<Query> prog = new ArrayList<>();
     prog.add(new SumMirror() {
 			
 			@Override
@@ -390,7 +480,7 @@ public class Compiler {
 									
 									@Override
 									public String target() {
-										return "Invoke";
+										return "InstanceInvoke";
 									}
 									
 									@Override
@@ -466,86 +556,25 @@ public class Compiler {
 			public String deriving() {
 				return null;
 			}
+
+			@Override
+			public Metric metric() {
+				return Metric.SUM;
+			}
 		});
-    
-    final List<Query> stmtQueries = new ArrayList<>(); 
-    final List<Query> exprQueries = new ArrayList<>();
-    for(final Query q : prog) {
-    	if(q.target() == QueryTarget.STATEMENT) {
-    		stmtQueries.add(q);
-    	} else {
-    		exprQueries.add(q);
-    	}
-    }
-    addInterpreter(sb, context, c, exprQueries, "soot.Value", "value");
-    addInterpreter(sb, context, c, stmtQueries, "soot.jimple.Stmt", "stmt");
-    context.dumpHelperMethods(sb); 
-    sb.append("}\n");
-
-    final File helloWorldJava = new File("codestats/QueryInterpreter$Impl.java");
-    if (helloWorldJava.getParentFile().exists() || helloWorldJava.getParentFile().mkdirs()) {
-
-        try {
-            Writer writer = null;
-            try {
-                writer = new FileWriter(helloWorldJava);
-                writer.write(sb.toString());
-                writer.flush();
-            } finally {
-                try {
-                    writer.close();
-                } catch (final Exception e) {
-                }
-            }
-
-            /** Compilation Requirements *********************************************************************************************/
-            final DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
-            final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-            final StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
-
-            // This sets up the class path that the compiler will use.
-            // I've added the .jar file that contains the DoStuff interface within in it...
-            final List<String> optionList = new ArrayList<String>();
-            optionList.add("-classpath");
-            optionList.add(System.getProperty("java.class.path"));
-
-            final Iterable<? extends JavaFileObject> compilationUnit
-                    = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(helloWorldJava));
-            final JavaCompiler.CompilationTask task = compiler.getTask(
-                null, 
-                fileManager, 
-                diagnostics, 
-                optionList, 
-                null, 
-                compilationUnit);
-            /********************************************************************************************* Compilation Requirements **/
-            if (task.call()) {
-                /************************************************************************************************* Load and execute **/
-            } else {
-                for (final Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
-                	System.out.println(diagnostic.getMessage(null));
-                    System.out.format("Error on line %d in %s%n",
-                            diagnostic.getLineNumber(),
-                            diagnostic.getSource().toUri());
-                }
-            }
-            fileManager.close();
-        } catch (final IOException exp) {
-            exp.printStackTrace();
-        }
-    }
+		return prog;
 	}
 
 	private static void addInterpreter(final StringBuilder sb, final CompileContext context, final Compiler c, final List<Query> exprQueries,
 			final String javaType, final String startType) {
-		sb.append("public boolean interpret(String q, ").append(javaType).append(" v) {");
+		sb.append("public boolean interpret(String q, ").append(javaType).append(" v) {\n");
     for(final Query q : exprQueries) {
     	sb.append("if(q.equals(\"").append(q.name()).append("\")) {\n");
     	sb.append("return ").append(c.translatePredicate("v", startType, q.getPredicate(), context)).append(";");
     	sb.append("\n} else ");
     }
     sb.append("{ throw new java.lang.IllegalArgumentException(); }\n");
-    sb.append("}");
+    sb.append("}\n");
 	}
 
 	private String translatePredicate(final String valueExpr, final String valueType, final PredicateMirror predicate, final CompileContext ctxt) {
@@ -573,5 +602,80 @@ public class Compiler {
 				return this.translateTrait(valueExpr, valueType, atom.attributeList(), atom.target(), atom.is(), ctxt);
 			}
 		}
+	}
+
+	public static CompiledQuery compile(final String string) throws FileNotFoundException, IOException {
+		final List<Query> prog = parseProgram(string);
+		final File f = compileProgram(prog);
+		final Map<String, Set<String>> exprExists = new HashMap<>();
+		final Map<String, Set<String>> stmtExists = new HashMap<>();
+		
+		final Map<String, Set<String>> exprSum = new HashMap<>();
+		final Map<String, Set<String>> stmtSum = new HashMap<>();
+		
+		for(final Query q : prog) {
+			Map<String, Set<String>> container;
+			if(q.target() == QueryTarget.STATEMENT) {
+				if(q.metric() == Metric.SUM) {
+					container = stmtSum;
+				} else {
+					container = stmtExists;
+				}
+			} else {
+				if(q.metric() == Metric.SUM) {
+					container = exprSum;
+				} else {
+					container = exprExists;
+				}
+			}
+			if(!container.containsKey(q.name())) {
+				container.put(q.name(), new HashSet<String>());
+			}
+			if(q.deriving() != null) {
+				if(!container.containsKey(q.deriving())) {
+					container.put(q.deriving(), new HashSet<String>());
+				}
+				container.get(q.deriving()).add(q.name());
+			}
+		}
+		final File assembledJar = assembleJarFile(f);
+		return new CompiledQuery(assembledJar, exprExists, stmtExists, exprSum, stmtSum, "codestats.QueryInterpreterImpl");
+	}
+
+	private static File assembleJarFile(final File interpreterClass) throws FileNotFoundException, IOException {
+		final File jar = File.createTempFile("codestatsAssemble", ".jar");
+		jar.deleteOnExit();
+		try(JarOutputStream jarOutput = new JarOutputStream(new FileOutputStream(jar))) {
+			includeClass(jarOutput, StatMapper.class);
+			includeClass(jarOutput, StatReducer.class);
+			{
+				for(final File f : interpreterClass.getParentFile().listFiles()) {
+					if(!f.getName().endsWith(".class")) {
+						continue;
+					}
+					final JarEntry interpEntry = new JarEntry(f.toString().replaceFirst("^(.+)codestats/", "codestats/"));
+					interpEntry.setTime(System.currentTimeMillis());
+					jarOutput.putNextEntry(interpEntry);
+					IOUtils.copy(new FileInputStream(f), jarOutput);
+					jarOutput.closeEntry();
+				}
+			}
+		}
+		return jar;
+	}
+
+	private static void includeClass(final JarOutputStream jarOutput, final Class<?> klass) throws IOException {
+		final String sourceName = klass.getName().replace(".", "/") + ".class";
+		final JarEntry mapperEntry = new JarEntry(sourceName);
+		mapperEntry.setTime(System.currentTimeMillis());
+		jarOutput.putNextEntry(mapperEntry);
+		final InputStream is = klass.getClassLoader().getResourceAsStream(sourceName);
+		IOUtils.copy(is, jarOutput);
+		jarOutput.closeEntry();
+	}
+
+	private static List<Query> parseProgram(final String string) {
+		// STUB!
+		return getProgram();
 	}
 }

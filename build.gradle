@@ -32,7 +32,7 @@ eclipse {
 	downloadSources = true
 	downloadJavadoc = true
 	defaultOutputDir file('build/classes/eclipse')
-	containers "org.eclipse.jdt.launching.JRE_CONTAINER"
+	/*containers "org.eclipse.jdt.launching.JRE_CONTAINER"
 	file {
 	  withXml {
 		it.asNode().children().findAll {
@@ -41,10 +41,18 @@ eclipse {
 		  it.asNode().remove(child)
 		}
 	  }
-	}
+	}*/
   }
 }
 
 dependencies {
 	compile group: "ca.mcgill.sable", name: "soot", version: "3.0.0-SNAPSHOT"
+	compile group: "org.apache.hadoop", name: "hadoop-mapreduce", version: "2.7.0"
+	compile group: "org.apache.hadoop", name: "hadoop-client", version: "2.7.0"
+}
+
+
+task copyDep(type: Copy) {
+  into "$rootProject.buildDir/build-deps"
+  from configurations.runtime
 }
