@@ -235,14 +235,12 @@ is = false;
       jj_consume_token(-1);
       throw new ParseException();
     }
-    jj_consume_token(28);
-    target = jj_consume_token(WHATEVER);
-    jj_consume_token(28);
+    target = jj_consume_token(STRING);
 PredicateAtom atom;
         if (operator != null) {
-            atom = new PredicateAtom(attribute, operator.image, target.image);
+            atom = new PredicateAtom(attribute, operator.image, target.image.substring(1, target.image.length() - 1));
         } else {
-            atom = new PredicateAtom(attribute, is, target.image);
+            atom = new PredicateAtom(attribute, is, target.image.substring(1, target.image.length() - 1));
         }
         {if ("" != null) return new PredicateMirror(atom);}
     throw new Error("Missing return statement in function");
@@ -380,7 +378,7 @@ PredicateAtom atom;
   /** Generate ParseException. */
   public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[29];
+    boolean[] la1tokens = new boolean[28];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
@@ -394,7 +392,7 @@ PredicateAtom atom;
         }
       }
     }
-    for (int i = 0; i < 29; i++) {
+    for (int i = 0; i < 28; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;
