@@ -303,8 +303,8 @@ public class Compiler {
 			@Override
 			public String f(final String accum, final String currType) {
 				if(currType.equals("STRING")) {
-					final String equalsCheck = accum + ".equals(\"" + targetConstant + "\")";
-					if(op.equals("=")) {
+					final String equalsCheck = accum + ".equals(\"" + targetConstant.substring(1, targetConstant.length() - 1) + "\")";
+					if(op.equals("==")) {
 						return equalsCheck;
 					} else {
 						return "!" + equalsCheck;
@@ -470,9 +470,8 @@ public class Compiler {
 
 	public static CompiledQuery compile(final String string) throws FileNotFoundException, IOException, ParseException, TokenMgrError {
 		final List<Query> prog = parseProgram(string);
-		System.out.println(prog);
-		System.exit(10);
 		final File f = compileProgram(prog);
+//		System.exit(10);
 		final Map<String, Set<String>> exprExists = new HashMap<>();
 		final Map<String, Set<String>> stmtExists = new HashMap<>();
 		
