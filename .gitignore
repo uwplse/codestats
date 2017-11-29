@@ -4,5 +4,8 @@
 .settings
 .project
 .idea
+*.iml
+*.ipr
+*.iws
 .DS_Store
 build
