@@ -19,13 +19,15 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import edu.washington.cse.codestats.CompiledQuery;
 import edu.washington.cse.codestats.Compiler;
+import edu.washington.cse.codestats.ParseException;
+import edu.washington.cse.codestats.TokenMgrError;
 import edu.washington.cse.codestats.hadoop.StatMapper;
 import edu.washington.cse.codestats.hadoop.StatReducer;
 
 public class Runner {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static void main(final String args[]) throws IOException, ClassNotFoundException, InterruptedException {
-		final CompiledQuery q = Compiler.compile("swagtastic!");
+	public static void main(final String args[]) throws IOException, ClassNotFoundException, InterruptedException, ParseException, TokenMgrError {
+		final CompiledQuery q = Compiler.compile("hello: count expression e where { e.args[*] is constant }");
 		final ClassLoader queryClassLoader = new URLClassLoader(new URL[] { q.getJarFile().toURI().toURL() });
 		final Configuration conf = new Configuration();
 		final FileSystem fs = FileSystem.get(conf);

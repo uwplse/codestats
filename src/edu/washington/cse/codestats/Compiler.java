@@ -1,5 +1,6 @@
 package edu.washington.cse.codestats;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -10,7 +11,6 @@ import java.io.InputStream;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -362,11 +362,6 @@ public class Compiler {
 		return string.equals("*");
 	}
 	
-	public static void main(final String[] args) {
-		final List<Query> prog = getProgram();
-    compileProgram(prog);
-	}
-
 	private static File compileProgram(final List<Query> prog) {
 		final StringBuilder sb = new StringBuilder(64);
     sb.append("package codestats;\n");
@@ -434,137 +429,6 @@ public class Compiler {
 		return new File("tmp/codestats/QueryInterpreterImpl.class");
 	}
 
-	private static List<Query> getProgram() {
-		final List<Query> prog = new ArrayList<>();
-    prog.add(new SumMirror() {
-			
-			@Override
-			public QueryTarget target() {
-				return QueryTarget.EXPRESSION;
-			}
-			
-			@Override
-			public String name() {
-				return "hello";
-			}
-			
-			@Override
-			public PredicateMirror getPredicate() {
-				return new PredicateMirror() {
-					@Override
-					public PredicateType getType() {
-						return PredicateType.AND;
-					}
-
-					@Override
-					public List<PredicateMirror> childPredicates() {
-						final List<PredicateMirror> toReturn = new ArrayList<PredicateMirror>();
-						toReturn.add(new PredicateMirror() {
-							@Override
-							public PredicateType getType() {
-								return PredicateType.ATOM;
-							}
-
-							@Override
-							public List<PredicateMirror> childPredicates() {
-								return null;
-							}
-
-							@Override
-							public PredicateAtom atom() {
-								return new PredicateAtom() {
-									@Override
-									public Type type() {
-										return Type.ATTRIBUTE_CHECK;
-									}
-									
-									@Override
-									public String target() {
-										return "InstanceInvoke";
-									}
-									
-									@Override
-									public String op() {
-										return "=";
-									}
-									
-									@Override
-									public boolean is() {
-										return false;
-									}
-									
-									@Override
-									public List<String> attributeList() {
-										return Collections.singletonList("kind");
-									}
-								};
-							}
-						});
-						toReturn.add(new PredicateMirror() {
-							@Override
-							public PredicateType getType() {
-								return PredicateType.ATOM;
-							}
-
-							@Override
-							public List<PredicateMirror> childPredicates() {
-								return null;
-							}
-
-							@Override
-							public PredicateAtom atom() {
-								return new PredicateAtom() {
-									@Override
-									public boolean is() {
-										return true;
-									}
-
-									@Override
-									public String target() {
-										return "constant";
-									}
-
-									@Override
-									public String op() {
-										return null;
-									}
-
-									@Override
-									public Type type() {
-										return Type.TRAIT_CHECK;
-									}
-
-									@Override
-									public List<String> attributeList() {
-										return Arrays.asList("args", "*");
-									}
-								};
-							}
-						});
-						return toReturn;
-					}
-
-					@Override
-					public PredicateAtom atom() {
-						return null;
-					}
-					
-				};
-			}
-			
-			@Override
-			public String deriving() {
-				return null;
-			}
-
-			@Override
-			public Metric metric() {
-				return Metric.SUM;
-			}
-		});
-		return prog;
-	}
-
 	private static void addInterpreter(final StringBuilder sb, final CompileContext context, final Compiler c, final List<Query> exprQueries,
 			final String javaType, final String startType) {
 		sb.append("public boolean interpret(String q, ").append(javaType).append(" v) {\n");
@@ -604,8 +468,10 @@ public class Compiler {
 		}
 	}
 
-	public static CompiledQuery compile(final String string) throws FileNotFoundException, IOException {
+	public static CompiledQuery compile(final String string) throws FileNotFoundException, IOException, ParseException, TokenMgrError {
 		final List<Query> prog = parseProgram(string);
+		System.out.println(prog);
+		System.exit(10);
 		final File f = compileProgram(prog);
 		final Map<String, Set<String>> exprExists = new HashMap<>();
 		final Map<String, Set<String>> stmtExists = new HashMap<>();
@@ -674,8 +540,7 @@ public class Compiler {
 		jarOutput.closeEntry();
 	}
 
-	private static List<Query> parseProgram(final String string) {
-		// STUB!
-		return getProgram();
+	private static List<Query> parseProgram(final String string) throws ParseException, TokenMgrError {
+		return QueryParser.parse(new ByteArrayInputStream(string.getBytes()));
 	}
 }
