@@ -2,7 +2,6 @@ package edu.washington.cse.codestats;
 
 import java.util.List;
 
-
 public class PredicateAtom {
 	private final boolean is;
 	private final String target;
@@ -20,4 +19,12 @@ public class PredicateAtom {
 	public String op() { return this.op; }
 	public Type type() { return this.type; }
 	public List<String> attributeList() { return this.attributes; }
+
+	public PredicateAtom() {
+		this.is = false;
+		this.target = null;
+		this.op = null;
+		this.type = null;
+		this.attributes = null;
+	}
 }
