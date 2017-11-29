@@ -48,11 +48,11 @@ List<Query> program() :
 
 Query block() :
 {
-    Token name;
+    Token name = null;
     Token deriving = null;
-    Metric metric;
-    QueryTarget target;
-    PredicateMirror pred;
+    Metric metric = null;
+    QueryTarget target = null;
+    PredicateMirror pred = null;
 }
 {
     (name = <IDENT>) ":" (<EXISTS> { metric = Metric.EXISTS; } | <COUNT> { metric = Metric.SUM; })
@@ -87,22 +87,31 @@ PredicateMirror disjunction() :
     PredicateMirror child;
 }
 {
-    (child = atom()) { children.add(child); }
-    (<OR> (child = atom()) { children.add(child); } )*
+    (child = atom_or_conjunction()) { children.add(child); }
+    (<OR> (child = atom_or_conjunction()) { children.add(child); } )*
     { return new PredicateMirror(PredicateMirror.PredicateType.OR, children); }
+}
+
+PredicateMirror atom_or_conjunction() :
+{
+    PredicateMirror pred;
+}
+{
+    ("(" (pred = conjunction()) ")" | (pred = atom()))
+    { return pred; }
 }
 
 PredicateMirror atom() :
 {
     List<String> attribute = new ArrayList<String>();
-    Token component;
-    Token target;
-    Token operator;
-    boolean is;
+    Token component = null;
+    Token target = null;
+    Token operator = null;
+    boolean is = true;
 }
 {
     <IDENT> ( "." (component = <IDENT>) { attribute.add(component.image); } | <ANY> { attribute.add("?"); } | <ALL> { attribute.add("*"); } | <THIS> { attribute.add("0"); } )*
-    ( (operator = <OPERATOR>) | <IS> ( <NOT> { is = false; } | { is = true; } )) (target = <WHATEVER>)
+    ( (operator = <OPERATOR>) | <IS> [ <NOT> { is = false; } ]) "\"" (target = <WHATEVER>) "\""
 
     {
         PredicateAtom atom;

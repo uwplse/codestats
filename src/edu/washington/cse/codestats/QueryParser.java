@@ -32,11 +32,11 @@ blocks.add(block);
     throw new Error("Missing return statement in function");
   }
 
-  final public Query block() throws ParseException {Token name;
+  final public Query block() throws ParseException {Token name = null;
     Token deriving = null;
-    Metric metric;
-    QueryTarget target;
-    PredicateMirror pred;
+    Metric metric = null;
+    QueryTarget target = null;
+    PredicateMirror pred = null;
     name = jj_consume_token(IDENT);
     jj_consume_token(22);
     switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
@@ -121,7 +121,7 @@ children.add(child);
 
   final public PredicateMirror disjunction() throws ParseException {List<PredicateMirror> children = new ArrayList<PredicateMirror>();
     PredicateMirror child;
-    child = atom();
+    child = atom_or_conjunction();
 children.add(child);
     label_3:
     while (true) {
@@ -135,18 +135,39 @@ children.add(child);
         break label_3;
       }
       jj_consume_token(OR);
-      child = atom();
+      child = atom_or_conjunction();
 children.add(child);
     }
 {if ("" != null) return new PredicateMirror(PredicateMirror.PredicateType.OR, children);}
     throw new Error("Missing return statement in function");
   }
 
+  final public PredicateMirror atom_or_conjunction() throws ParseException {PredicateMirror pred;
+    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+    case 25:{
+      jj_consume_token(25);
+      pred = conjunction();
+      jj_consume_token(26);
+      break;
+      }
+    case IDENT:{
+      pred = atom();
+      break;
+      }
+    default:
+      jj_la1[6] = jj_gen;
+      jj_consume_token(-1);
+      throw new ParseException();
+    }
+{if ("" != null) return pred;}
+    throw new Error("Missing return statement in function");
+  }
+
   final public PredicateMirror atom() throws ParseException {List<String> attribute = new ArrayList<String>();
-    Token component;
-    Token target;
-    Token operator;
-    boolean is;
+    Token component = null;
+    Token target = null;
+    Token operator = null;
+    boolean is = true;
     jj_consume_token(IDENT);
     label_4:
     while (true) {
@@ -154,17 +175,17 @@ children.add(child);
       case ANY:
       case ALL:
       case THIS:
-      case 25:{
+      case 27:{
         ;
         break;
         }
       default:
-        jj_la1[6] = jj_gen;
+        jj_la1[7] = jj_gen;
         break label_4;
       }
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case 25:{
-        jj_consume_token(25);
+      case 27:{
+        jj_consume_token(27);
         component = jj_consume_token(IDENT);
 attribute.add(component.image);
         break;
@@ -185,7 +206,7 @@ attribute.add("0");
         break;
         }
       default:
-        jj_la1[7] = jj_gen;
+        jj_la1[8] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
       }
@@ -204,17 +225,19 @@ is = false;
         break;
         }
       default:
-        jj_la1[8] = jj_gen;
-is = true;
+        jj_la1[9] = jj_gen;
+        ;
       }
       break;
       }
     default:
-      jj_la1[9] = jj_gen;
+      jj_la1[10] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
+    jj_consume_token(28);
     target = jj_consume_token(WHATEVER);
+    jj_consume_token(28);
 PredicateAtom atom;
         if (operator != null) {
             atom = new PredicateAtom(attribute, operator.image, target.image);
@@ -234,13 +257,13 @@ PredicateAtom atom;
   public Token jj_nt;
   private int jj_ntk;
   private int jj_gen;
-  final private int[] jj_la1 = new int[10];
+  final private int[] jj_la1 = new int[11];
   static private int[] jj_la1_0;
   static {
       jj_la1_init_0();
    }
    private static void jj_la1_init_0() {
-      jj_la1_0 = new int[] {0x80000,0x60,0x180,0x200,0x800,0x1000,0x2070000,0x2070000,0x8000,0x202000,};
+      jj_la1_0 = new int[] {0x80000,0x60,0x180,0x200,0x800,0x1000,0x2080000,0x8070000,0x8070000,0x8000,0x202000,};
    }
 
   /** Constructor with InputStream. */
@@ -254,7 +277,7 @@ PredicateAtom atom;
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 11; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -268,7 +291,7 @@ PredicateAtom atom;
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 11; i++) jj_la1[i] = -1;
   }
 
   /** Constructor. */
@@ -278,7 +301,7 @@ PredicateAtom atom;
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 11; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -288,7 +311,7 @@ PredicateAtom atom;
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 11; i++) jj_la1[i] = -1;
   }
 
   /** Constructor with generated Token Manager. */
@@ -297,7 +320,7 @@ PredicateAtom atom;
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 11; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -306,7 +329,7 @@ PredicateAtom atom;
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 11; i++) jj_la1[i] = -1;
   }
 
   private Token jj_consume_token(int kind) throws ParseException {
@@ -357,12 +380,12 @@ PredicateAtom atom;
   /** Generate ParseException. */
   public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[26];
+    boolean[] la1tokens = new boolean[29];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
     }
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 11; i++) {
       if (jj_la1[i] == jj_gen) {
         for (int j = 0; j < 32; j++) {
           if ((jj_la1_0[i] & (1<<j)) != 0) {
@@ -371,7 +394,7 @@ PredicateAtom atom;
         }
       }
     }
-    for (int i = 0; i < 26; i++) {
+    for (int i = 0; i < 29; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;
