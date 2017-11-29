@@ -521,7 +521,7 @@ private int jjMoveNfa_0(int startState, int curPos)
          {
             switch(jjstateSet[--i])
             {
-               default : if (i1 == 0 || l1 == 0 || i2 == 0 || l2 == 0) break; else break;
+               default : break;
             }
          } while(i != startsAt);
       }
