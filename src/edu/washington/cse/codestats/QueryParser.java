@@ -37,7 +37,7 @@ blocks.add(block);
     QueryTarget target;
     PredicateMirror pred;
     name = jj_consume_token(IDENT);
-    jj_consume_token(20);
+    jj_consume_token(22);
     switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
     case EXISTS:{
       jj_consume_token(EXISTS);
@@ -82,9 +82,9 @@ target = STATEMENT;
       ;
     }
     jj_consume_token(WHERE);
-    jj_consume_token(21);
+    jj_consume_token(23);
     pred = Predicate();
-    jj_consume_token(22);
+    jj_consume_token(24);
 {if ("" != null) return new Query(name.image, deriving == null ? null : deriving.image, metric, target, pred);}
     throw new Error("Missing return statement in function");
   }
@@ -141,12 +141,19 @@ children.add(child);
     throw new Error("Missing return statement in function");
   }
 
-  static final public PredicateMirror atom() throws ParseException {
+  static final public PredicateMirror atom() throws ParseException {List<String> attribute = new ArrayList<String>();
+    Token component;
+    Token target;
+    Token operator;
+    boolean is;
     jj_consume_token(IDENT);
     label_4:
     while (true) {
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case 23:{
+      case ANY:
+      case ALL:
+      case THIS:
+      case 25:{
         ;
         break;
         }
@@ -154,24 +161,26 @@ children.add(child);
         jj_la1[6] = jj_gen;
         break label_4;
       }
-      jj_consume_token(23);
-      jj_consume_token(IDENT);
-    }
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case ANY:
-    case ALL:
-    case THIS:{
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case 25:{
+        jj_consume_token(25);
+        component = jj_consume_token(IDENT);
+attribute.add(component.image);
+        break;
+        }
       case ANY:{
         jj_consume_token(ANY);
+attribute.add("?");
         break;
         }
       case ALL:{
         jj_consume_token(ALL);
+attribute.add("*");
         break;
         }
       case THIS:{
         jj_consume_token(THIS);
+attribute.add("0");
         break;
         }
       default:
@@ -179,96 +188,39 @@ children.add(child);
         jj_consume_token(-1);
         throw new ParseException();
       }
+    }
+    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+    case OPERATOR:{
+      operator = jj_consume_token(OPERATOR);
       break;
       }
-    default:
-      jj_la1[8] = jj_gen;
-      ;
-    }
-    jj_consume_token(IS);
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case NOT:{
-      jj_consume_token(NOT);
+    case IS:{
+      jj_consume_token(IS);
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case NOT:{
+        jj_consume_token(NOT);
+is = false;
+        break;
+        }
+      default:
+        jj_la1[8] = jj_gen;
+is = true;
+      }
       break;
       }
     default:
       jj_la1[9] = jj_gen;
-      ;
-    }
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case IDENT:{
-      jj_consume_token(IDENT);
-      label_5:
-      while (true) {
-        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-        case 23:{
-          ;
-          break;
-          }
-        default:
-          jj_la1[10] = jj_gen;
-          break label_5;
-        }
-        jj_consume_token(23);
-        jj_consume_token(IDENT);
-      }
-      break;
-      }
-    case IN:{
-      jj_consume_token(IN);
-      jj_consume_token(24);
-      jj_consume_token(IDENT);
-      label_6:
-      while (true) {
-        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-        case 23:{
-          ;
-          break;
-          }
-        default:
-          jj_la1[11] = jj_gen;
-          break label_6;
-        }
-        jj_consume_token(23);
-        jj_consume_token(IDENT);
-      }
-      label_7:
-      while (true) {
-        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-        case 25:{
-          ;
-          break;
-          }
-        default:
-          jj_la1[12] = jj_gen;
-          break label_7;
-        }
-        jj_consume_token(25);
-        jj_consume_token(IDENT);
-        label_8:
-        while (true) {
-          switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-          case 23:{
-            ;
-            break;
-            }
-          default:
-            jj_la1[13] = jj_gen;
-            break label_8;
-          }
-          jj_consume_token(23);
-          jj_consume_token(IDENT);
-        }
-      }
-      jj_consume_token(26);
-      break;
-      }
-    default:
-      jj_la1[14] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
-{if ("" != null) return null;}
+    target = jj_consume_token(WHATEVER);
+PredicateAtom atom;
+        if (operator != null) {
+            atom = new PredicateAtom(attribute, operator.image, target.image);
+        } else {
+            atom = new PredicateAtom(attribute, is, target.image);
+        }
+        {if ("" != null) return new PredicateMirror(atom);}
     throw new Error("Missing return statement in function");
   }
 
@@ -282,13 +234,13 @@ children.add(child);
   static public Token jj_nt;
   static private int jj_ntk;
   static private int jj_gen;
-  static final private int[] jj_la1 = new int[15];
+  static final private int[] jj_la1 = new int[10];
   static private int[] jj_la1_0;
   static {
       jj_la1_init_0();
    }
    private static void jj_la1_init_0() {
-      jj_la1_0 = new int[] {0x80000,0x60,0x180,0x200,0x800,0x1000,0x800000,0x70000,0x70000,0x8000,0x800000,0x800000,0x2000000,0x800000,0x84000,};
+      jj_la1_0 = new int[] {0x80000,0x60,0x180,0x200,0x800,0x1000,0x2070000,0x2070000,0x8000,0x202000,};
    }
 
   /** Constructor with InputStream. */
@@ -309,7 +261,7 @@ children.add(child);
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 15; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -323,7 +275,7 @@ children.add(child);
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 15; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
   }
 
   /** Constructor. */
@@ -340,7 +292,7 @@ children.add(child);
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 15; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -350,7 +302,7 @@ children.add(child);
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 15; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
   }
 
   /** Constructor with generated Token Manager. */
@@ -366,7 +318,7 @@ children.add(child);
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 15; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -375,7 +327,7 @@ children.add(child);
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 15; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 10; i++) jj_la1[i] = -1;
   }
 
   static private Token jj_consume_token(int kind) throws ParseException {
@@ -426,12 +378,12 @@ children.add(child);
   /** Generate ParseException. */
   static public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[27];
+    boolean[] la1tokens = new boolean[26];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
     }
-    for (int i = 0; i < 15; i++) {
+    for (int i = 0; i < 10; i++) {
       if (jj_la1[i] == jj_gen) {
         for (int j = 0; j < 32; j++) {
           if ((jj_la1_0[i] & (1<<j)) != 0) {
@@ -440,7 +392,7 @@ children.add(child);
         }
       }
     }
-    for (int i = 0; i < 27; i++) {
+    for (int i = 0; i < 26; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;

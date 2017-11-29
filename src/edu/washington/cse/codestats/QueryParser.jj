@@ -32,6 +32,8 @@ TOKEN :
 | < ALL : "[*]" >
 | < THIS : "[0]" >
 | < IDENT : (["A"-"Z", "a"-"z", "_"])+ >
+| < WHATEVER : (["A"-"Z", "a"-"z", "0"-"9", "_", "."])+ >
+| < OPERATOR : ("!=" | "==" | "<" | "<=" | ">=" | ">") >
 }
 
 List<Query> program() :
@@ -90,9 +92,24 @@ PredicateMirror disjunction() :
 }
 
 PredicateMirror atom() :
-{}
 {
-    <IDENT> ( "." <IDENT> )* [ <ANY> | <ALL> | <THIS> ] <IS> (<NOT>)?
-    (<IDENT> ( "." <IDENT> )* | <IN> "[" <IDENT> ( "." <IDENT> )* ( "," <IDENT> ("." <IDENT> )* )* "]" )
-    { return null; }
+    List<String> attribute = new ArrayList<String>();
+    Token component;
+    Token target;
+    Token operator;
+    boolean is;
+}
+{
+    <IDENT> ( "." (component = <IDENT>) { attribute.add(component.image); } | <ANY> { attribute.add("?"); } | <ALL> { attribute.add("*"); } | <THIS> { attribute.add("0"); } )*
+    ( (operator = <OPERATOR>) | <IS> ( <NOT> { is = false; } | { is = true; } )) (target = <WHATEVER>)
+
+    {
+        PredicateAtom atom;
+        if (operator != null) {
+            atom = new PredicateAtom(attribute, operator.image, target.image);
+        } else {
+            atom = new PredicateAtom(attribute, is, target.image);
+        }
+        return new PredicateMirror(atom);
+    }
 }

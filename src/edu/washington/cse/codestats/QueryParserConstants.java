@@ -40,6 +40,10 @@ public interface QueryParserConstants {
   int THIS = 18;
   /** RegularExpression Id. */
   int IDENT = 19;
+  /** RegularExpression Id. */
+  int WHATEVER = 20;
+  /** RegularExpression Id. */
+  int OPERATOR = 21;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -66,13 +70,12 @@ public interface QueryParserConstants {
     "\"[*]\"",
     "\"[0]\"",
     "<IDENT>",
+    "<WHATEVER>",
+    "<OPERATOR>",
     "\":\"",
     "\"{\"",
     "\"}\"",
     "\".\"",
-    "\"[\"",
-    "\",\"",
-    "\"]\"",
   };
 
 }
