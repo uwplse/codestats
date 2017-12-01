@@ -33,7 +33,8 @@ TOKEN :
 | < ALL : "[*]" >
 | < THIS : "[0]" >
 | < IDENT : (["A"-"Z", "a"-"z", "_"])+ >
-| < STRING : "\"" (["A"-"Z", "a"-"z", "0"-"9", "_", "."])* "\"" >
+| < STRING : "'" (~["'"])* "'" >
+| < NUMBER : (["0"-"9"])+ >
 | < OPERATOR : ("!=" | "==" | "<" | "<=" | ">=" | ">") >
 }
 
@@ -111,14 +112,16 @@ PredicateMirror atom() :
 }
 {
     <IDENT> ( "." (component = <IDENT>) { attribute.add(component.image); } | <ANY> { attribute.add("?"); } | <ALL> { attribute.add("*"); } | <THIS> { attribute.add("0"); } )*
-    ( (operator = <OPERATOR>) | <IS> [ <NOT> { is = false; } ]) (target = <STRING>)
-
+    (
+      ((operator = <OPERATOR>) (target = <STRING> | target = <NUMBER>))
+      | (<IS> { is =  true; } [ <NOT> { is = false; } ]) (target = <IDENT>)
+    )
     {
         PredicateAtom atom;
         if (operator != null) {
-            atom = new PredicateAtom(attribute, operator.image, target.image.substring(1, target.image.length() - 1));
+            atom = new PredicateAtom(attribute, operator.image, target.image);
         } else {
-            atom = new PredicateAtom(attribute, is, target.image(1, target.image.length() - 1));
+            atom = new PredicateAtom(attribute, is, target.image);
         }
         return new PredicateMirror(atom);
     }

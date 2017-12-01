@@ -43,7 +43,9 @@ public interface QueryParserConstants {
   /** RegularExpression Id. */
   int STRING = 20;
   /** RegularExpression Id. */
-  int OPERATOR = 21;
+  int NUMBER = 21;
+  /** RegularExpression Id. */
+  int OPERATOR = 22;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -71,6 +73,7 @@ public interface QueryParserConstants {
     "\"[0]\"",
     "<IDENT>",
     "<STRING>",
+    "<NUMBER>",
     "<OPERATOR>",
     "\":\"",
     "\"{\"",

@@ -1,8 +1,6 @@
 package edu.washington.cse.codestats.runner;
 
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLClassLoader;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -11,30 +9,28 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import edu.washington.cse.codestats.CompiledQuery;
 import edu.washington.cse.codestats.Compiler;
+import edu.washington.cse.codestats.ParseException;
+import edu.washington.cse.codestats.TokenMgrError;
 import edu.washington.cse.codestats.hadoop.StatMapper;
 import edu.washington.cse.codestats.hadoop.StatReducer;
 
 public class Runner {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static void main(final String args[]) throws IOException, ClassNotFoundException, InterruptedException {
-		final CompiledQuery q = Compiler.compile("swagtastic!");
-		final ClassLoader queryClassLoader = new URLClassLoader(new URL[] { q.getJarFile().toURI().toURL() });
+	public static void main(final String args[]) throws IOException, ClassNotFoundException, InterruptedException, ParseException, TokenMgrError {
+		final CompiledQuery q = Compiler.compile("hello: count expression e where { e.kind == 'InstanceInvoke'}" +
+				"world: count expression e within hello where { e.args[*] is constant }");
 		final Configuration conf = new Configuration();
 		final FileSystem fs = FileSystem.get(conf);
 		final Job j = Job.getInstance(conf, "code stats");
-		final Class<?> mapperClass = queryClassLoader.loadClass(StatMapper.class.getName());
-		final Class<?> reducerClass = queryClassLoader.loadClass(StatReducer.class.getName());
-		j.setMapperClass((Class<? extends Mapper>) mapperClass);
-		j.setReducerClass((Class<? extends Reducer>) reducerClass);
-		j.setCombinerClass((Class<? extends Reducer>) reducerClass);
+		j.setMapperClass(StatMapper.class);
+		j.setReducerClass(StatReducer.class);
+		j.setCombinerClass(StatReducer.class);
 		j.setJar(q.getJarFile().getAbsolutePath());
 		j.setInputFormatClass(SequenceFileInputFormat.class);
 		j.setOutputFormatClass(TextOutputFormat.class);
