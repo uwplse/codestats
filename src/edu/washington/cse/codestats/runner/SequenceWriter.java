@@ -30,9 +30,9 @@ public class SequenceWriter {
                 final Text t = new Text();
                 final BytesWritable v = new BytesWritable();
                 final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                final byte[] classBytes = baos.toByteArray();
                 t.set(pathname.replaceFirst("[.]class", ""));
-                IOUtils.copy(new FileInputStream(new File(directory + File.pathSeparator + pathname)), baos);
+                IOUtils.copy(new FileInputStream(new File(directory + File.separator + pathname)), baos);
+                final byte[] classBytes = baos.toByteArray();
                 v.set(classBytes, 0, classBytes.length);
                 w.append(t, v);
                 w.hflush();
@@ -47,11 +47,9 @@ public class SequenceWriter {
     }
 
     private static void listUnder(String directory, String subdirectory, List<String> listing)  {
-	    System.out.println("Listing directory " + directory + File.pathSeparator + subdirectory + "<- the fuck is this\n");
-	    System.out.println(new File(directory + File.pathSeparator + subdirectory).list());
-        for (String filename : new File(directory + File.pathSeparator + subdirectory).list()) {
-            filename = subdirectory + File.pathSeparator + filename;
-            File file = new File(directory + File.pathSeparator + filename);
+        for (String filename : new File(directory + File.separator + subdirectory).list()) {
+            filename = subdirectory + File.separator + filename;
+            File file = new File(directory + File.separator + filename);
             if (file.isDirectory()) {
                 SequenceWriter.listUnder(directory, filename, listing );
             } else if (file.isFile() && filename.endsWith(".class")) {
