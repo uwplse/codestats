@@ -7,7 +7,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,8 +32,6 @@ import com.google.common.collect.Table;
 
 import edu.washington.cse.codestats.PredicateAtom.Type;
 import edu.washington.cse.codestats.PredicateMirror.PredicateType;
-import edu.washington.cse.codestats.hadoop.StatMapper;
-import edu.washington.cse.codestats.hadoop.StatReducer;
 import fj.F2;
 
 public class Compiler {
@@ -471,7 +468,6 @@ public class Compiler {
 	public static CompiledQuery compile(final String string) throws FileNotFoundException, IOException, ParseException, TokenMgrError {
 		final List<Query> prog = parseProgram(string);
 		final File f = compileProgram(prog);
-//		System.exit(10);
 		final Map<String, Set<String>> exprExists = new HashMap<>();
 		final Map<String, Set<String>> stmtExists = new HashMap<>();
 		
@@ -511,8 +507,6 @@ public class Compiler {
 		final File jar = File.createTempFile("codestatsAssemble", ".jar");
 		jar.deleteOnExit();
 		try(JarOutputStream jarOutput = new JarOutputStream(new FileOutputStream(jar))) {
-			includeClass(jarOutput, StatMapper.class);
-			includeClass(jarOutput, StatReducer.class);
 			{
 				for(final File f : interpreterClass.getParentFile().listFiles()) {
 					if(!f.getName().endsWith(".class")) {
@@ -527,16 +521,6 @@ public class Compiler {
 			}
 		}
 		return jar;
-	}
-
-	private static void includeClass(final JarOutputStream jarOutput, final Class<?> klass) throws IOException {
-		final String sourceName = klass.getName().replace(".", "/") + ".class";
-		final JarEntry mapperEntry = new JarEntry(sourceName);
-		mapperEntry.setTime(System.currentTimeMillis());
-		jarOutput.putNextEntry(mapperEntry);
-		final InputStream is = klass.getClassLoader().getResourceAsStream(sourceName);
-		IOUtils.copy(is, jarOutput);
-		jarOutput.closeEntry();
 	}
 
 	private static List<Query> parseProgram(final String string) throws ParseException, TokenMgrError {

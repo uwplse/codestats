@@ -104,6 +104,7 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 		});
 		Scene.v().addBasicClass(clsName);
 		Options.v().set_allow_phantom_refs(true);
+		Options.v().set_coffi(true);
 		Scene.v().loadBasicClasses();
 		final SootClass cls = Scene.v().loadClass(clsName, SootClass.BODIES);
 		if(cls.isInterface()) {
