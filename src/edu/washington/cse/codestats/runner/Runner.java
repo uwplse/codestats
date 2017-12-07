@@ -26,7 +26,6 @@ public class Runner {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static void main(final String args[]) throws IOException, ClassNotFoundException, InterruptedException, ParseException, TokenMgrError {
 		final CompiledQuery q = Compiler.compile(args[0]);
-		System.exit(10);
 		final Configuration conf = new Configuration();
 		final FileSystem fs = FileSystem.get(conf);
 		final Job j = Job.getInstance(conf, "code stats");

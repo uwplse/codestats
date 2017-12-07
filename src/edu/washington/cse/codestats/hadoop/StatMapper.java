@@ -36,34 +36,33 @@ import soot.jimple.Stmt;
 import soot.options.Options;
 import soot.tagkit.AttributeValueException;
 import soot.tagkit.Tag;
+import edu.washington.cse.codestats.CompiledQuery;
 import edu.washington.cse.codestats.QueryInterpreter;
+import edu.washington.cse.codestats.QueryTree;
+import edu.washington.cse.codestats.QueryTree.QueryGroup;
+import edu.washington.cse.codestats.shadow.EXISTS;
+import edu.washington.cse.codestats.shadow.SUM;
+import fj.F2;
+import fj.function.Effect1;
 
 public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> {
+	private static final String FAILED_METHOD_KEY = "$FAILED_METHODS";
+
 	private static enum Diagnostics {
+		OOM_METHOD,
 		FAILED_METHODS,
 		FAILED_CLASSES,
 	}
 	
 	public final static String INTERPRETER_CLASS_NAME = "codestats.interpreter.class";
 	private QueryInterpreter interpreter;
-	public final static String STMT_SUM = "codestats.sum.stmt";
-	public final static String EXPR_SUM = "codestats.sum.expr";
-	public final static String STMT_EXISTS = "codestats.exists.stmt";
-	public final static String EXPR_EXISTS = "codestats.exists.expr";
-	
-	private final Map<String, Set<String>> stmtExists = new HashMap<>();
-	private final Map<String, Set<String>> exprExists = new HashMap<>();
-	private final Map<String, Set<String>> exprSums = new HashMap<>();
-	private final Map<String, Set<String>> stmtSums = new HashMap<>();
-	
-	private final Set<String> sumExprRoots = new HashSet<>();
-	private final Set<String> sumStmtRoots = new HashSet<>();
-	private final Set<String> existsExprRoots = new HashSet<>();
-	private final Set<String> existsStmtRoots = new HashSet<>();
+	public final QueryTree qt = new QueryTree();
 	
 	private final Text outputValue = new Text();
-	private final LongWritable oneValue = new LongWritable(1L);
+	private static final LongWritable ONE_VALUE = new LongWritable(1L);
+	private final LongWritable count = new LongWritable();
 	private Constructor<?> classSourceConstructor;
+	private CountManager cm;
 	
 	@Override
 	protected void setup(final Context context) throws IOException, InterruptedException {
@@ -74,11 +73,8 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 			throw new IOException(e);
 		}
 		
-		calculateQueryTree(context, STMT_SUM, stmtSums, sumStmtRoots);
-		calculateQueryTree(context, STMT_EXISTS, stmtExists, existsStmtRoots);
-		
-		calculateQueryTree(context, EXPR_SUM, exprSums, sumExprRoots);
-		calculateQueryTree(context, EXPR_EXISTS, exprExists, existsExprRoots);
+		CompiledQuery.readTree(context.getConfiguration(), qt);
+		cm = new CountManager(); 
 		
 		try {
 			classSourceConstructor = Class.forName("soot.asm.AsmClassSource").getDeclaredConstructors()[0];
@@ -87,31 +83,92 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 			throw new IOException();
 		}
 	}
-
-	private void calculateQueryTree(final Context context, final String property, final Map<String, Set<String>> queryTree, final Set<String> queryRoots) {
-		final Set<String> notRoot = new HashSet<>();
-		if(context.getConfiguration().get(property, "").isEmpty()) {
-			return;
+	
+	private final F2<String, Stmt, Boolean> stmtQuery = new F2<String, Stmt, Boolean>() {
+		@Override
+		public Boolean f(final String a, final Stmt b) {
+			return interpreter.interpret(a, b);
 		}
-		for(final String s : context.getConfiguration().get(property).split(";")) {
-			final String[] kv = s.split("=");
-			final String target = kv[0];
-			queryTree.put(target, new HashSet<String>());
-			if(kv.length == 2) {
-				for(final String derivedQueries : kv[1].split(",")) {
-					queryTree.get(target).add(derivedQueries);
-					notRoot.add(derivedQueries);
-					queryRoots.remove(derivedQueries);
+	};
+	
+	private final F2<String, ValueBox, Boolean> exprQuery = new F2<String, ValueBox, Boolean>() {
+		@Override
+		public Boolean f(final String a, final ValueBox b) {
+			return interpreter.interpret(a, b);
+		}
+	};
+	
+	private interface MatchEffect<T, M> extends Effect1<String> { }
+	
+	private class CountManager {
+		private final Map<String, Integer> exprCounts = new HashMap<>();
+		private final Map<String, Integer> stmtCounts = new HashMap<>();
+		private final Set<String> foundStmts = new HashSet<>();
+		private final Set<String> foundExpr = new HashSet<>();
+		
+		private final MatchEffect<ValueBox, SUM> eSumIncr_  = new MatchEffect<ValueBox, SUM>() {
+			@Override
+			public void f(final String a) {
+				if(exprCounts.containsKey(a)) {
+					exprCounts.put(a, exprCounts.get(a) + 1);
+				} else {
+					exprCounts.put(a, 1);
 				}
 			}
-			if(!notRoot.contains(target)) {
-				queryRoots.add(target);
+		};
+		
+		private final MatchEffect<Stmt, SUM> sSumIncr_  = new MatchEffect<Stmt, SUM>() {
+			@Override
+			public void f(final String a) {
+				if(stmtCounts.containsKey(a)) {
+					stmtCounts.put(a, stmtCounts.get(a) + 1);
+				} else {
+					stmtCounts.put(a, 1);
+				}
 			}
+		};
+		
+		private final MatchEffect<Stmt, EXISTS> sFound = new MatchEffect<Stmt, EXISTS>() {
+			@Override
+			public void f(final String a) {
+				foundStmts.add(a);
+			}
+		};
+		
+		private final MatchEffect<ValueBox, EXISTS> eFound = new MatchEffect<ValueBox, EXISTS>() {
+			@Override
+			public void f(final String a) {
+				foundExpr.add(a);
+			}
+		};
+		
+		public MatchEffect<ValueBox, SUM> exprSumIncrementer() {
+			return eSumIncr_;
+		}
+		
+		public MatchEffect<ValueBox, EXISTS> exprFoundFlag() {
+			return eFound;
+		}
+		
+		public MatchEffect<Stmt, SUM> stmtSumIncrementer() {
+			return sSumIncr_;
+		}
+		
+		public MatchEffect<Stmt, EXISTS> stmtFoundFlag() {
+			return sFound;
+		}
+		
+		public void reset() { 
+			exprCounts.clear();
+			stmtCounts.clear();
+			foundStmts.clear();
+			foundExpr.clear();
 		}
 	}
-	
+
 	@Override
 	protected void map(final Text key, final BytesWritable value, final Context context) throws IOException, InterruptedException {
+		cm.reset();
 		try {
 			G.reset();
 			final String clsName = key.toString();
@@ -160,8 +217,6 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 			}
 			for(final SootMethod m : cls.getMethods()) {
 				try {
-					final HashSet<String> stmtExists = new HashSet<>();
-					final HashSet<String> exprExists = new HashSet<>();
 					if(!m.isConcrete()) {
 						continue;
 					}
@@ -184,80 +239,73 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 					for(final Unit u : body.getUnits()) {
 						final Stmt s = (Stmt) u;
 						s.addTag(hostTag);
-						for(final String existsRoot : existsStmtRoots) {
-							interpretStmtExists(s, existsRoot, stmtExists);
-						}
-						for(final String sumRoot : sumStmtRoots) {
-							interpretStmtSum(s, sumRoot, context);
-						}
-						if(!exprSums.isEmpty() || !exprExists.isEmpty()) {
+						this.runQueryTree(s, qt.getStmtExists(), this.stmtQuery, cm.stmtFoundFlag());
+						this.runQueryTree(s, qt.getStmtSums(), this.stmtQuery, cm.stmtSumIncrementer());
+						if(qt.hasExprQueries()) {
 							for(final ValueBox vb : s.getUseBoxes()) {
 								vb.addTag(hostTag);
-								for(final String sumRoot : sumExprRoots) {
-									interpretExprSum(vb, sumRoot, context);
-								}
-								for(final String existsRoot : existsExprRoots) {
-									interpretExprExists(vb, existsRoot, exprExists);
-								}
+								this.runQueryTree(vb, qt.getExprExists(), this.exprQuery, cm.exprFoundFlag());
+								this.runQueryTree(vb, qt.getExprSums(), this.exprQuery, cm.exprSumIncrementer());
 							}
 						}
 					}
-					for(final String foundPattern : exprExists) {
-						writeQueryIncrement(foundPattern, context);
-					}
-					for(final String foundPattern : stmtExists) {
-						writeQueryIncrement(foundPattern, context);
-					}
-					writeQueryIncrement("$NUM_METHODS", context);
+				} catch(final OutOfMemoryError e) {
+					context.getCounter(Diagnostics.OOM_METHOD).increment(1L);
+					recordFailedMethod(context);
+					return;
 				} catch(final Exception e) {
-					context.getCounter(Diagnostics.FAILED_METHODS).increment(1L);
-					writeQueryIncrement("$FAILED_METHODS", context);
+					recordFailedMethod(context);
+					return;
 				}
 			}
 		} catch(final Exception e) {
 			context.getCounter(Diagnostics.FAILED_CLASSES).increment(1L);
 			writeQueryIncrement("$FAILED_CLASSES", context);
+			return;
+		}
+		for(final String foundPattern : cm.foundExpr) {
+			writeQueryIncrement(foundPattern, context);
+		}
+		for(final String foundPattern : cm.foundStmts) {
+			writeQueryIncrement(foundPattern, context);
+		}
+		for(final Map.Entry<String, Integer> kv : cm.exprCounts.entrySet()) {
+			writeQueryIncrement(kv.getKey(), kv.getValue(), context);
+		}
+		for(final Map.Entry<String, Integer> kv : cm.stmtCounts.entrySet()) {
+			writeQueryIncrement(kv.getKey(), kv.getValue(), context);
+		}
+		writeQueryIncrement("$NUM_METHODS", context);
+	}
+
+	private void writeQueryIncrement(final String key, final int value, final Context context) throws IOException, InterruptedException {
+		outputValue.set(key);
+		count.set(value);
+		context.write(outputValue, count);
+	}
+
+	private void recordFailedMethod(final Context context) throws IOException, InterruptedException {
+		context.getCounter(Diagnostics.FAILED_METHODS).increment(1L);
+		writeQueryIncrement(FAILED_METHOD_KEY, context);
+	}
+	
+	private <T, M> void runQueryTree(final T val, final QueryGroup<T, M> qg, final F2<String, T, Boolean> interp, final MatchEffect<T, M> me) {
+		for(final String root : qg.roots()) {
+			this.runQueryTree(val, root, qg, interp, me);
 		}
 	}
-
-	private void interpretExprExists(final ValueBox value, final String query, final HashSet<String> exists) {
-		if(interpreter.interpret(query, value)) {
-			exists.add(query);
-			for(final String derivedQuery : exprExists.get(query)) {
-				interpretExprExists(value, derivedQuery, exists);
-			}
-		}
-	}
-
-	private void interpretExprSum(final ValueBox value, final String query, final Context context) throws IOException, InterruptedException {
-		if(interpreter.interpret(query, value)) {
-			writeQueryIncrement(query, context);
-			for(final String derivedQuery : exprSums.get(query)) {
-				interpretExprSum(value, derivedQuery, context);
-			}
-		}
-	}
-
-	private void writeQueryIncrement(final String query, final Context context) throws IOException, InterruptedException {
-		outputValue.set(query);
-		context.write(outputValue, oneValue);
-	}
-
-	private void interpretStmtExists(final Stmt s, final String query, final HashSet<String> existsSet) {
-		if(interpreter.interpret(query, s)) {
-			existsSet.add(query);
-			for(final String derivedQuery : stmtExists.get(query)) {
-				interpretStmtExists(s, derivedQuery, existsSet);
+	
+	private <T, M> void runQueryTree(final T val, final String q, final QueryGroup<T, M> qg, final F2<String, T, Boolean> interp, final MatchEffect<T, M> me) {
+		if(interp.f(q, val)) {
+			me.f(q);
+			for(final String subQuery : qg.children(q)) {
+				this.runQueryTree(val, subQuery, qg, interp, me);
 			}
 		}
 	}
 	
-	private void interpretStmtSum(final Stmt s, final String query, final Context c) throws IOException, InterruptedException {
-		if(interpreter.interpret(query, s)) {
-			writeQueryIncrement(query, c);
-			for(final String derivedQuery : stmtSums.get(query)) {
-				interpretStmtSum(s, derivedQuery, c);
-			}
-		}
+	private void writeQueryIncrement(final String query, final Context context) throws IOException, InterruptedException {
+		outputValue.set(query);
+		context.write(outputValue, ONE_VALUE);
 	}
 }

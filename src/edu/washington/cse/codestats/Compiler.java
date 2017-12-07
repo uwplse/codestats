@@ -576,7 +576,7 @@ public class Compiler {
 			}
 		}
 		final File assembledJar = assembleJarFile(f);
-		return new CompiledQuery(assembledJar, exprExists, stmtExists, exprSum, stmtSum, "codestats.QueryInterpreterImpl");
+		return new CompiledQuery(assembledJar, new QueryTree(exprExists, stmtExists, exprSum, stmtSum), "codestats.QueryInterpreterImpl");
 	}
 
 	private static File assembleJarFile(final File interpreterClass) throws FileNotFoundException, IOException {
