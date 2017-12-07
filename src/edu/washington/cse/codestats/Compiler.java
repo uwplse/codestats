@@ -507,17 +507,15 @@ public class Compiler {
 		final File jar = File.createTempFile("codestatsAssemble", ".jar");
 		jar.deleteOnExit();
 		try(JarOutputStream jarOutput = new JarOutputStream(new FileOutputStream(jar))) {
-			{
-				for(final File f : interpreterClass.getParentFile().listFiles()) {
-					if(!f.getName().endsWith(".class")) {
-						continue;
-					}
-					final JarEntry interpEntry = new JarEntry(f.toString().replaceFirst("^(.+)codestats/", "codestats/"));
-					interpEntry.setTime(System.currentTimeMillis());
-					jarOutput.putNextEntry(interpEntry);
-					IOUtils.copy(new FileInputStream(f), jarOutput);
-					jarOutput.closeEntry();
+			for(final File f : interpreterClass.getParentFile().listFiles()) {
+				if(!f.getName().endsWith(".class")) {
+					continue;
 				}
+				final JarEntry interpEntry = new JarEntry(f.toString().replaceFirst("^(.+)codestats/", "codestats/"));
+				interpEntry.setTime(System.currentTimeMillis());
+				jarOutput.putNextEntry(interpEntry);
+				IOUtils.copy(new FileInputStream(f), jarOutput);
+				jarOutput.closeEntry();
 			}
 		}
 		return jar;

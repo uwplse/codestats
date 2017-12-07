@@ -1,10 +1,15 @@
 package edu.washington.cse.codestats.hadoop;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -13,6 +18,9 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
+import soot.ClassProvider;
+import soot.ClassSource;
+import soot.FoundFile;
 import soot.G;
 import soot.PackManager;
 import soot.Scene;
@@ -22,6 +30,7 @@ import soot.SourceLocator;
 import soot.Unit;
 import soot.Value;
 import soot.ValueBox;
+import soot.asm.AsmClassProvider;
 import soot.grimp.Grimp;
 import soot.grimp.GrimpBody;
 import soot.jimple.Stmt;
@@ -29,6 +38,11 @@ import soot.options.Options;
 import edu.washington.cse.codestats.QueryInterpreter;
 
 public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> {
+	private static enum Diagnostics {
+		FAILED_METHODS,
+		FAILED_CLASSES,
+	}
+	
 	public final static String INTERPRETER_CLASS_NAME = "codestats.interpreter.class";
 	private QueryInterpreter interpreter;
 	public final static String STMT_SUM = "codestats.sum.stmt";
@@ -48,6 +62,7 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 	
 	private final Text outputValue = new Text();
 	private final LongWritable oneValue = new LongWritable(1L);
+	private Constructor<?> builderConstructor;
 	
 	@Override
 	protected void setup(final Context context) throws IOException, InterruptedException {
@@ -63,6 +78,13 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 		
 		calculateQueryTree(context, EXPR_SUM, exprSums, sumExprRoots);
 		calculateQueryTree(context, EXPR_EXISTS, exprExists, existsExprRoots);
+		
+		try {
+			builderConstructor = Class.forName("soot.asm.AsmClassSource").getDeclaredConstructors()[0];
+			builderConstructor.setAccessible(true);
+		} catch (final ClassNotFoundException e) {
+			throw new IOException();
+		}
 	}
 
 	private void calculateQueryTree(final Context context, final String property, final Map<String, Set<String>> queryTree, final Set<String> queryRoots) {
@@ -89,61 +111,96 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 	
 	@Override
 	protected void map(final Text key, final BytesWritable value, final Context context) throws IOException, InterruptedException {
-		G.reset();
-		final String clsName = key.toString();
-		final String classFileName = clsName.replace('.', '/') + ".class";
-		SourceLocator.v().additionalClassLoader(new ClassLoader() {
-			@Override
-			public InputStream getResourceAsStream(final String clsName) {
-				if(clsName.equals(classFileName)) {
-					return new ByteArrayInputStream(value.getBytes(), 0, value.getLength());
-				} else {
-					return null;
-				}
-			}
-		});
-		Scene.v().addBasicClass(clsName);
-		Options.v().set_allow_phantom_refs(true);
-		Options.v().set_coffi(true);
-		Scene.v().loadBasicClasses();
-		final SootClass cls = Scene.v().loadClass(clsName, SootClass.BODIES);
-		if(cls.isInterface()) {
-			return;
-		}
-		for(final SootMethod m : cls.getMethods()) {
-			final HashSet<String> stmtExists = new HashSet<>();
-			final HashSet<String> exprExists = new HashSet<>();
-			if(!m.isConcrete()) {
-				continue;
-			}
-			final GrimpBody body = Grimp.v().newBody(m.retrieveActiveBody(), "gb");
-			PackManager.v().getPack("gop").apply(body);
-			for(final Unit u : body.getUnits()) {
-				final Stmt s = (Stmt) u;
-				for(final String existsRoot : existsStmtRoots) {
-					interpretStmtExists(s, existsRoot, stmtExists);
-				}
-				for(final String sumRoot : sumStmtRoots) {
-					interpretStmtSum(s, sumRoot, context);
-				}
-				if(!exprSums.isEmpty() || !exprExists.isEmpty()) {
-					for(final ValueBox vb : s.getUseBoxes()) {
-						for(final String sumRoot : sumExprRoots) {
-							interpretExprSum(vb.getValue(), sumRoot, context);
+		try {
+			G.reset();
+			final String clsName = key.toString();
+			final List<ClassProvider> cp = new ArrayList<>();
+			cp.add(new AsmClassProvider());
+			cp.add(new ClassProvider() {
+				@Override
+				public ClassSource find(final String className) {
+					if(className.equals(clsName)) {
+						final FoundFile f = new FoundFile(new File("DOES_NOT_ACTUALLY_EXIST")) {
+							private ByteArrayInputStream baos;
+	
+							@Override
+							public InputStream inputStream() {
+								baos = new ByteArrayInputStream(value.getBytes(), 0, value.getLength());
+								return baos;
+							}
+							
+							@Override
+							public void close() { 
+								if(baos != null) {
+									try {
+										baos.close();
+									} catch (final IOException e) { }
+									baos = null;
+								}
+							}
+						};
+						try {
+							return (ClassSource) builderConstructor.newInstance(className, f);
+						} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+							return null;
 						}
-						for(final String existsRoot : existsExprRoots) {
-							interpretExprExists(vb.getValue(), existsRoot, exprExists);
-						}
+					} else {
+						return null;
 					}
 				}
+			});
+			SourceLocator.v().setClassProviders(cp);
+			Scene.v().addBasicClass(clsName);
+			Options.v().set_allow_phantom_refs(true);
+			Scene.v().loadBasicClasses();
+			final SootClass cls = Scene.v().loadClass(clsName, SootClass.BODIES);
+			if(cls.isInterface()) {
+				return;
 			}
-			for(final String foundPattern : exprExists) {
-				writeQueryIncrement(foundPattern, context);
+			for(final SootMethod m : cls.getMethods()) {
+				try {
+					final HashSet<String> stmtExists = new HashSet<>();
+					final HashSet<String> exprExists = new HashSet<>();
+					if(!m.isConcrete()) {
+						continue;
+					}
+					final GrimpBody body = Grimp.v().newBody(m.retrieveActiveBody(), "gb");
+					m.releaseActiveBody();
+					PackManager.v().getPack("gop").apply(body);
+					for(final Unit u : body.getUnits()) {
+						final Stmt s = (Stmt) u;
+						for(final String existsRoot : existsStmtRoots) {
+							interpretStmtExists(s, existsRoot, stmtExists);
+						}
+						for(final String sumRoot : sumStmtRoots) {
+							interpretStmtSum(s, sumRoot, context);
+						}
+						if(!exprSums.isEmpty() || !exprExists.isEmpty()) {
+							for(final ValueBox vb : s.getUseBoxes()) {
+								for(final String sumRoot : sumExprRoots) {
+									interpretExprSum(vb.getValue(), sumRoot, context);
+								}
+								for(final String existsRoot : existsExprRoots) {
+									interpretExprExists(vb.getValue(), existsRoot, exprExists);
+								}
+							}
+						}
+					}
+					for(final String foundPattern : exprExists) {
+						writeQueryIncrement(foundPattern, context);
+					}
+					for(final String foundPattern : stmtExists) {
+						writeQueryIncrement(foundPattern, context);
+					}
+					writeQueryIncrement("$NUM_METHODS", context);
+				} catch(final Exception e) {
+					context.getCounter(Diagnostics.FAILED_METHODS).increment(1L);
+					writeQueryIncrement("$FAILED_METHODS", context);
+				}
 			}
-			for(final String foundPattern : stmtExists) {
-				writeQueryIncrement(foundPattern, context);
-			}
-			writeQueryIncrement("$NUM_METHODS", context);
+		} catch(final Exception e) {
+			context.getCounter(Diagnostics.FAILED_CLASSES).increment(1L);
+			writeQueryIncrement("$FAILED_CLASSES", context);
 		}
 	}
 
@@ -186,5 +243,11 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 				interpretStmtSum(s, derivedQuery, c);
 			}
 		}
+	}
+	
+	public static void main(final String[] args) throws ClassNotFoundException, NoSuchMethodException, SecurityException {
+		final Class<?> clsBuilder = Class.forName("soot.asm.SootClassBuilder");
+		clsBuilder.getDeclaredConstructors()[0].setAccessible(true);
+		System.out.println(clsBuilder.getConstructor(SootClass.class));
 	}
 }

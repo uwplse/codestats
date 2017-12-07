@@ -25,8 +25,7 @@ import edu.washington.cse.codestats.hadoop.StatReducer;
 public class Runner {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static void main(final String args[]) throws IOException, ClassNotFoundException, InterruptedException, ParseException, TokenMgrError {
-		final CompiledQuery q = Compiler.compile("num_method: count expression e where { e.kind == 'InstanceInvoke'}"
-				+ "all_constant: count expression e within num_method where { e.args[*] is constant }");
+		final CompiledQuery q = Compiler.compile(args[0]);
 		final Configuration conf = new Configuration();
 		final FileSystem fs = FileSystem.get(conf);
 		final Job j = Job.getInstance(conf, "code stats");
@@ -43,6 +42,7 @@ public class Runner {
 		j.setOutputFormatClass(TextOutputFormat.class);
 		j.setMapOutputKeyClass(Text.class);
 		j.setMapOutputValueClass(LongWritable.class);
+		SequenceFileInputFormat.setInputDirRecursive(j, true);
 		SequenceFileInputFormat.addInputPaths(j, "/user/jtoman/inputs");
 		fs.delete(new Path("/user/jtoman/output"), true);
 		FileOutputFormat.setOutputPath(j, new Path("/user/jtoman/output"));
@@ -50,6 +50,8 @@ public class Runner {
 		j.setOutputValueClass(LongWritable.class);
 		q.configure(j);
 		j.setNumReduceTasks(1);
+		j.getConfiguration().set("mapred.child.java.opts", "-Xmx2000m");
+		j.getConfiguration().set("mapreduce.map.memory.mb", "2100");
 		final Path tmpJarPath = new Path("/tmp/" + DigestUtils.sha256Hex(q.getJarFile().getAbsolutePath()) + "." + System.currentTimeMillis() + ".jar");
 		fs.copyFromLocalFile(false, true, new Path(q.getJarFile().getAbsolutePath()), tmpJarPath);
 		j.addArchiveToClassPath(tmpJarPath);
