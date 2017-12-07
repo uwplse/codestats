@@ -28,13 +28,14 @@ import soot.SootClass;
 import soot.SootMethod;
 import soot.SourceLocator;
 import soot.Unit;
-import soot.Value;
 import soot.ValueBox;
 import soot.asm.AsmClassProvider;
 import soot.grimp.Grimp;
 import soot.grimp.GrimpBody;
 import soot.jimple.Stmt;
 import soot.options.Options;
+import soot.tagkit.AttributeValueException;
+import soot.tagkit.Tag;
 import edu.washington.cse.codestats.QueryInterpreter;
 
 public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> {
@@ -62,7 +63,7 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 	
 	private final Text outputValue = new Text();
 	private final LongWritable oneValue = new LongWritable(1L);
-	private Constructor<?> builderConstructor;
+	private Constructor<?> classSourceConstructor;
 	
 	@Override
 	protected void setup(final Context context) throws IOException, InterruptedException {
@@ -80,8 +81,8 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 		calculateQueryTree(context, EXPR_EXISTS, exprExists, existsExprRoots);
 		
 		try {
-			builderConstructor = Class.forName("soot.asm.AsmClassSource").getDeclaredConstructors()[0];
-			builderConstructor.setAccessible(true);
+			classSourceConstructor = Class.forName("soot.asm.AsmClassSource").getDeclaredConstructors()[0];
+			classSourceConstructor.setAccessible(true);
 		} catch (final ClassNotFoundException e) {
 			throw new IOException();
 		}
@@ -140,7 +141,7 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 							}
 						};
 						try {
-							return (ClassSource) builderConstructor.newInstance(className, f);
+							return (ClassSource) classSourceConstructor.newInstance(className, f);
 						} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 							return null;
 						}
@@ -167,8 +168,22 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 					final GrimpBody body = Grimp.v().newBody(m.retrieveActiveBody(), "gb");
 					m.releaseActiveBody();
 					PackManager.v().getPack("gop").apply(body);
+					final Tag hostTag = new Tag() {
+						private final byte[] sigBytes = m.getSignature().getBytes();;
+
+						@Override
+						public byte[] getValue() throws AttributeValueException {
+							return sigBytes;
+						}
+						
+						@Override
+						public String getName() {
+							return "HostMethod";
+						}
+					};
 					for(final Unit u : body.getUnits()) {
 						final Stmt s = (Stmt) u;
+						s.addTag(hostTag);
 						for(final String existsRoot : existsStmtRoots) {
 							interpretStmtExists(s, existsRoot, stmtExists);
 						}
@@ -177,11 +192,12 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 						}
 						if(!exprSums.isEmpty() || !exprExists.isEmpty()) {
 							for(final ValueBox vb : s.getUseBoxes()) {
+								vb.addTag(hostTag);
 								for(final String sumRoot : sumExprRoots) {
-									interpretExprSum(vb.getValue(), sumRoot, context);
+									interpretExprSum(vb, sumRoot, context);
 								}
 								for(final String existsRoot : existsExprRoots) {
-									interpretExprExists(vb.getValue(), existsRoot, exprExists);
+									interpretExprExists(vb, existsRoot, exprExists);
 								}
 							}
 						}
@@ -204,7 +220,7 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 		}
 	}
 
-	private void interpretExprExists(final Value value, final String query, final HashSet<String> exists) {
+	private void interpretExprExists(final ValueBox value, final String query, final HashSet<String> exists) {
 		if(interpreter.interpret(query, value)) {
 			exists.add(query);
 			for(final String derivedQuery : exprExists.get(query)) {
@@ -213,7 +229,7 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 		}
 	}
 
-	private void interpretExprSum(final Value value, final String query, final Context context) throws IOException, InterruptedException {
+	private void interpretExprSum(final ValueBox value, final String query, final Context context) throws IOException, InterruptedException {
 		if(interpreter.interpret(query, value)) {
 			writeQueryIncrement(query, context);
 			for(final String derivedQuery : exprSums.get(query)) {
@@ -243,11 +259,5 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 				interpretStmtSum(s, derivedQuery, c);
 			}
 		}
-	}
-	
-	public static void main(final String[] args) throws ClassNotFoundException, NoSuchMethodException, SecurityException {
-		final Class<?> clsBuilder = Class.forName("soot.asm.SootClassBuilder");
-		clsBuilder.getDeclaredConstructors()[0].setAccessible(true);
-		System.out.println(clsBuilder.getConstructor(SootClass.class));
 	}
 }

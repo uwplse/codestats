@@ -9,13 +9,12 @@ import org.apache.hadoop.mapreduce.Job;
 import edu.washington.cse.codestats.hadoop.StatMapper;
 
 public class CompiledQuery {
-
 	private final File jarFile;
 	private final Map<String, Set<String>> exprExists;
 	private final Map<String, Set<String>> stmtExists;
 	private final Map<String, Set<String>> exprSum;
 	private final Map<String, Set<String>> stmtSum;
-	private final String interpreterName;
+	public final String interpreterName;
 
 	public CompiledQuery(final File jarFile, final Map<String, Set<String>> exprExists, final Map<String, Set<String>> stmtExists,
 			final Map<String, Set<String>> exprSum, final Map<String, Set<String>> stmtSum, final String interpreterName) {

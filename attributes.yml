@@ -3,6 +3,7 @@ value:
   attributes:
     - [ "kind", "STRING" ]
     - [ "type", "STRING" ]
+    - [ "host", "method" ]
   traits:
     - "null"
     - "constant"
@@ -81,9 +82,10 @@ new_array:
     - [ "baseType", "STRING" ]
 
 stmt:
-  type: "soot.Stmt"
+  type: "soot.jimple.Stmt"
   attributes:
     - [ "kind", "STRING" ]
+    - [ "host", "method" ]
 invoke_stmt:
   type: "soot.jimple.InvokeStmt"
   extends: "stmt"

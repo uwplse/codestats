@@ -158,14 +158,102 @@ public class QueryParser implements QueryParserConstants {
     throw new Error("Missing return statement in function");
   }
 
+  static final public List<String> detList() throws ParseException {
+  List<String> attribute = new ArrayList<String>();
+  Token component = null;
+    jj_consume_token(IDENT);
+    label_4:
+    while (true) {
+      switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+      case THIS:
+      case 28:
+        ;
+        break;
+      default:
+        jj_la1[7] = jj_gen;
+        break label_4;
+      }
+      switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+      case 28:
+        jj_consume_token(28);
+        component = jj_consume_token(IDENT);
+                                        attribute.add(component.image);
+        break;
+      case THIS:
+        jj_consume_token(THIS);
+                                                                                     attribute.add("0");
+        break;
+      default:
+        jj_la1[8] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
+      }
+    }
+    {if (true) return attribute;}
+    throw new Error("Missing return statement in function");
+  }
+
+  static final public List<String> valueList() throws ParseException {
+  List<String> vList = new ArrayList<String>();
+  Token target_const = null;
+    jj_consume_token(26);
+    switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+    case STRING:
+      target_const = jj_consume_token(STRING);
+                                      vList.add(target_const.image);
+      label_5:
+      while (true) {
+        switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+        case 29:
+          ;
+          break;
+        default:
+          jj_la1[9] = jj_gen;
+          break label_5;
+        }
+        jj_consume_token(29);
+        target_const = jj_consume_token(STRING);
+                                                                                                        vList.add(target_const.image);
+      }
+      break;
+    case NUMBER:
+      target_const = jj_consume_token(NUMBER);
+                                      vList.add(target_const.image);
+      label_6:
+      while (true) {
+        switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
+        case 29:
+          ;
+          break;
+        default:
+          jj_la1[10] = jj_gen;
+          break label_6;
+        }
+        jj_consume_token(29);
+        target_const = jj_consume_token(NUMBER);
+                                                                                                        vList.add(target_const.image);
+      }
+      break;
+    default:
+      jj_la1[11] = jj_gen;
+      jj_consume_token(-1);
+      throw new ParseException();
+    }
+    jj_consume_token(27);
+     {if (true) return vList;}
+    throw new Error("Missing return statement in function");
+  }
+
   static final public PredicateMirror atom() throws ParseException {
     List<String> attribute = new ArrayList<String>();
     Token component = null;
     Token target = null;
     Token operator = null;
     boolean is = true;
+    boolean in = true;
+    List<String> targetList = null;
     jj_consume_token(IDENT);
-    label_4:
+    label_7:
     while (true) {
       switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
       case ANY:
@@ -175,8 +263,8 @@ public class QueryParser implements QueryParserConstants {
         ;
         break;
       default:
-        jj_la1[7] = jj_gen;
-        break label_4;
+        jj_la1[12] = jj_gen;
+        break label_7;
       }
       switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
       case 28:
@@ -197,7 +285,7 @@ public class QueryParser implements QueryParserConstants {
                                                                                                                                                        attribute.add("0");
         break;
       default:
-        jj_la1[8] = jj_gen;
+        jj_la1[13] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
       }
@@ -212,34 +300,45 @@ public class QueryParser implements QueryParserConstants {
       case NUMBER:
         target = jj_consume_token(NUMBER);
         break;
+      case IDENT:
+        targetList = detList();
+        break;
       default:
-        jj_la1[9] = jj_gen;
+        jj_la1[14] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
       }
       break;
     case IS:
       jj_consume_token(IS);
-                is =  true;
+                is = true;
       switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
       case NOT:
         jj_consume_token(NOT);
-                                        is = false;
+                                       is = false;
         break;
       default:
-        jj_la1[10] = jj_gen;
+        jj_la1[15] = jj_gen;
         ;
       }
       target = jj_consume_token(IDENT);
       break;
+    case IN:
+      operator = jj_consume_token(IN);
+      targetList = valueList();
+      break;
     default:
-      jj_la1[11] = jj_gen;
+      jj_la1[16] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
         PredicateAtom atom;
         if (operator != null) {
-            atom = new PredicateAtom(attribute, operator.image, target.image);
+            if(targetList != null) {
+              atom = new PredicateAtom(attribute, operator.image, targetList);
+            } else {
+              atom = new PredicateAtom(attribute, operator.image, target.image);
+            }
         } else {
             atom = new PredicateAtom(attribute, is, target.image);
         }
@@ -257,13 +356,13 @@ public class QueryParser implements QueryParserConstants {
   static public Token jj_nt;
   static private int jj_ntk;
   static private int jj_gen;
-  static final private int[] jj_la1 = new int[12];
+  static final private int[] jj_la1 = new int[17];
   static private int[] jj_la1_0;
   static {
       jj_la1_init_0();
    }
    private static void jj_la1_init_0() {
-      jj_la1_0 = new int[] {0x80000,0x60,0x180,0x200,0x800,0x1000,0x4080000,0x10070000,0x10070000,0x300000,0x8000,0x402000,};
+      jj_la1_0 = new int[] {0x80000,0x60,0x180,0x200,0x800,0x1000,0x4080000,0x10040000,0x10040000,0x20000000,0x20000000,0x300000,0x10070000,0x10070000,0x380000,0x8000,0x406000,};
    }
 
   /** Constructor with InputStream. */
@@ -284,7 +383,7 @@ public class QueryParser implements QueryParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 12; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 17; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -298,7 +397,7 @@ public class QueryParser implements QueryParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 12; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 17; i++) jj_la1[i] = -1;
   }
 
   /** Constructor. */
@@ -315,7 +414,7 @@ public class QueryParser implements QueryParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 12; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 17; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -325,7 +424,7 @@ public class QueryParser implements QueryParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 12; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 17; i++) jj_la1[i] = -1;
   }
 
   /** Constructor with generated Token Manager. */
@@ -341,7 +440,7 @@ public class QueryParser implements QueryParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 12; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 17; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -350,7 +449,7 @@ public class QueryParser implements QueryParserConstants {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 12; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 17; i++) jj_la1[i] = -1;
   }
 
   static private Token jj_consume_token(int kind) throws ParseException {
@@ -401,12 +500,12 @@ public class QueryParser implements QueryParserConstants {
   /** Generate ParseException. */
   static public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[29];
+    boolean[] la1tokens = new boolean[30];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
     }
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 17; i++) {
       if (jj_la1[i] == jj_gen) {
         for (int j = 0; j < 32; j++) {
           if ((jj_la1_0[i] & (1<<j)) != 0) {
@@ -415,7 +514,7 @@ public class QueryParser implements QueryParserConstants {
         }
       }
     }
-    for (int i = 0; i < 29; i++) {
+    for (int i = 0; i < 30; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;

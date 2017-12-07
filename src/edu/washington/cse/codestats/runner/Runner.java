@@ -26,6 +26,7 @@ public class Runner {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static void main(final String args[]) throws IOException, ClassNotFoundException, InterruptedException, ParseException, TokenMgrError {
 		final CompiledQuery q = Compiler.compile(args[0]);
+		System.exit(10);
 		final Configuration conf = new Configuration();
 		final FileSystem fs = FileSystem.get(conf);
 		final Job j = Job.getInstance(conf, "code stats");
@@ -43,15 +44,15 @@ public class Runner {
 		j.setMapOutputKeyClass(Text.class);
 		j.setMapOutputValueClass(LongWritable.class);
 		SequenceFileInputFormat.setInputDirRecursive(j, true);
-		SequenceFileInputFormat.addInputPaths(j, "/user/jtoman/inputs");
+		SequenceFileInputFormat.addInputPaths(j, "/user/jtoman/test-inputs");
 		fs.delete(new Path("/user/jtoman/output"), true);
 		FileOutputFormat.setOutputPath(j, new Path("/user/jtoman/output"));
 		j.setOutputKeyClass(Text.class);
 		j.setOutputValueClass(LongWritable.class);
 		q.configure(j);
 		j.setNumReduceTasks(1);
-		j.getConfiguration().set("mapred.child.java.opts", "-Xmx2000m");
-		j.getConfiguration().set("mapreduce.map.memory.mb", "2100");
+		j.getConfiguration().set("mapred.child.java.opts", "-Xmx1324m");
+		j.getConfiguration().set("mapreduce.map.memory.mb", "1500");
 		final Path tmpJarPath = new Path("/tmp/" + DigestUtils.sha256Hex(q.getJarFile().getAbsolutePath()) + "." + System.currentTimeMillis() + ".jar");
 		fs.copyFromLocalFile(false, true, new Path(q.getJarFile().getAbsolutePath()), tmpJarPath);
 		j.addArchiveToClassPath(tmpJarPath);

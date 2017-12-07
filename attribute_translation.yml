@@ -27,6 +27,7 @@ value:
   type: "{0}.getType().toString()"
   "null": "{0} instanceof soot.jimple.NullConstant"
   constant: "{0} instanceof soot.jimple.Constant"
+  host: &host "soot.Scene.v().grabMethod(new java.lang.String(toCheck.getTag(\"HostMethod\").getValue())).makeRef()"
   "local": "{0} instanceof soot.Local"
 method_call:
   method: "{0}.getMethodRef()"
@@ -34,7 +35,7 @@ method_call:
 instance_method_call:
   receiver: "{0}.getBase()"
 method:
-  declaringClass: "{0}.getDeclaringClass().getName()"
+  declaringClass: "{0}.declaringClass().getName()"
   returnType: "{0}.getReturnType().toString()"
   paramTypes: |
     // $BLOCK$
@@ -86,6 +87,7 @@ stmt:
     } else {
        return "Other";
     }
+  host: *host
 invoke_stmt:
   method_call: "{0}.getInvokeExpr()"
 assign_stmt:

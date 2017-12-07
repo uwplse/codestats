@@ -102,6 +102,34 @@ PredicateMirror atom_or_conjunction() :
     { return pred; }
 }
 
+List<String> detList() :
+{
+  List<String> attribute = new ArrayList<String>();
+  Token component = null;
+}
+{
+  <IDENT> ( "." (component = <IDENT>) { attribute.add(component.image); } | <THIS> { attribute.add("0"); } )*
+  {
+    return attribute;
+  }
+}
+
+List<String> valueList() :
+{
+  List<String> vList = new ArrayList<String>();
+  Token target_const = null;
+}
+{
+  "(" (
+         ((target_const = <STRING>) { vList.add(target_const.image); } ("," (target_const = <STRING>) { vList.add(target_const.image); })*)
+       | ((target_const = <NUMBER>) { vList.add(target_const.image); } ("," (target_const = <NUMBER>) { vList.add(target_const.image); })*)
+      ) ")"
+  {
+     return vList;
+  }
+    
+}
+
 PredicateMirror atom() :
 {
     List<String> attribute = new ArrayList<String>();
@@ -109,17 +137,24 @@ PredicateMirror atom() :
     Token target = null;
     Token operator = null;
     boolean is = true;
+    boolean in = true;
+    List<String> targetList = null;
 }
 {
     <IDENT> ( "." (component = <IDENT>) { attribute.add(component.image); } | <ANY> { attribute.add("?"); } | <ALL> { attribute.add("*"); } | <THIS> { attribute.add("0"); } )*
     (
-      ((operator = <OPERATOR>) (target = <STRING> | target = <NUMBER>))
-      | (<IS> { is =  true; } [ <NOT> { is = false; } ]) (target = <IDENT>)
+      ((operator = <OPERATOR>) (target = <STRING> | target = <NUMBER> | targetList = detList()))
+      | (<IS> { is = true; } [ <NOT> { is = false; } ]) (target = <IDENT>)
+      | ((operator = <IN>) (targetList = valueList())) 
     )
     {
         PredicateAtom atom;
         if (operator != null) {
-            atom = new PredicateAtom(attribute, operator.image, target.image);
+            if(targetList != null) {
+              atom = new PredicateAtom(attribute, operator.image, targetList);
+            } else {
+              atom = new PredicateAtom(attribute, operator.image, target.image);
+            }
         } else {
             atom = new PredicateAtom(attribute, is, target.image);
         }

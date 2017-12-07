@@ -35,6 +35,7 @@ import edu.washington.cse.codestats.PredicateMirror.PredicateType;
 import fj.F2;
 
 public class Compiler {
+	private static final String ARG_NAME = "toCheck";
 	private static final Table<String, String, Translator> ATTR = HashBasedTable.create();
 	private static final Table<String, String, Translator> TRAITS = HashBasedTable.create();
 	private static final Table<String, String, String> AVAIL_ATTR = HashBasedTable.create();
@@ -79,9 +80,10 @@ public class Compiler {
 		TRAITS.put("alloc", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
 		TRAITS.put("alloc", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
 		TRAITS.put("alloc", "local", new InlineTranslator("{0} instanceof soot.Local"));
-		ATTR.put("stmt", "kind", new BlockTranslator("soot.Stmt", "String", "// $BLOCK$\nif({0} instanceof soot.jimple.AssignStmt) {\n   return \"Assign\";\n} " +
+		ATTR.put("stmt", "kind", new BlockTranslator("soot.jimple.Stmt", "String", "// $BLOCK$\nif({0} instanceof soot.jimple.AssignStmt) {\n   return \"Assign\";\n} " +
 				"else if({0} instanceof soot.jimple.InvokeStmt) {\n   return \"Invoke\";\n} " +
 				"else {\n   return \"Other\";\n}\n", "STRING"));
+		ATTR.put("stmt", "host", new InlineTranslator("soot.Scene.v().grabMethod(new java.lang.String(toCheck.getTag(\"HostMethod\").getValue())).makeRef()", "method"));
 		TYPE_TABLE.put("stmt", "soot.jimple.Stmt");
 		ATTR.put("new_array", "size", new InlineTranslator("{0}.getSize()", "value"));
 		ATTR.put("new_array", "baseType", new InlineTranslator("{0}.getBaseType().toString()", "STRING"));
@@ -126,6 +128,7 @@ public class Compiler {
 		TRAITS.put("value", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
 		TRAITS.put("value", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
 		TRAITS.put("value", "local", new InlineTranslator("{0} instanceof soot.Local"));
+		ATTR.put("value", "host", new InlineTranslator("soot.Scene.v().grabMethod(new java.lang.String(toCheck.getTag(\"HostMethod\").getValue())).makeRef()", "method"));
 		ATTR.put("assign_stmt", "lhs", new InlineTranslator("{0}.getLeftOp()", "value"));
 		ATTR.put("assign_stmt", "rhs", new InlineTranslator("{0}.getRightOp()", "value"));
 		TYPE_TABLE.put("assign_stmt", "soot.jimple.AssignStmt");
@@ -136,7 +139,7 @@ public class Compiler {
 		TRAITS.put("field", "static", new InlineTranslator("{0}.isStatic()"));
 		ATTR.put("invoke_stmt", "method_call", new InlineTranslator("{0}.getInvokeExpr()", "method_call"));
 		TYPE_TABLE.put("invoke_stmt", "soot.jimple.InvokeStmt");
-		ATTR.put("method", "declaringClass", new InlineTranslator("{0}.getDeclaringClass().getName()", "STRING"));
+		ATTR.put("method", "declaringClass", new InlineTranslator("{0}.declaringClass().getName()", "STRING"));
 		ATTR.put("method", "returnType", new InlineTranslator("{0}.getReturnType().toString()", "STRING"));
 		ATTR.put("method", "paramTypes", new BlockTranslator("soot.SootMethodRef", "java.util.List<String>", "// $BLOCK$\n" +
 				"java.util.List<String> toReturn = new java.util.ArrayList<>();\n" +
@@ -149,6 +152,7 @@ public class Compiler {
 		AVAIL_ATTR.put("unop", "operand", "unop");
 		AVAIL_ATTR.put("unop", "kind", "value");
 		AVAIL_ATTR.put("unop", "type", "value");
+		AVAIL_ATTR.put("unop", "host", "value");
 		AVAIL_TRAITS.put("unop", "null", "value");
 		AVAIL_TRAITS.put("unop", "constant", "value");
 		AVAIL_TRAITS.put("unop", "local", "value");
@@ -157,6 +161,7 @@ public class Compiler {
 		AVAIL_ATTR.put("method_call", "receiver", "instance_method_call");
 		AVAIL_ATTR.put("method_call", "kind", "value");
 		AVAIL_ATTR.put("method_call", "type", "value");
+		AVAIL_ATTR.put("method_call", "host", "value");
 		AVAIL_TRAITS.put("method_call", "null", "value");
 		AVAIL_TRAITS.put("method_call", "constant", "value");
 		AVAIL_TRAITS.put("method_call", "local", "value");
@@ -164,11 +169,13 @@ public class Compiler {
 		AVAIL_ATTR.put("array_ref", "array", "array_ref");
 		AVAIL_ATTR.put("array_ref", "kind", "value");
 		AVAIL_ATTR.put("array_ref", "type", "value");
+		AVAIL_ATTR.put("array_ref", "host", "value");
 		AVAIL_TRAITS.put("array_ref", "null", "value");
 		AVAIL_TRAITS.put("array_ref", "constant", "value");
 		AVAIL_TRAITS.put("array_ref", "local", "value");
 		AVAIL_ATTR.put("binop", "kind", "value");
 		AVAIL_ATTR.put("binop", "type", "value");
+		AVAIL_ATTR.put("binop", "host", "value");
 		AVAIL_TRAITS.put("binop", "null", "value");
 		AVAIL_TRAITS.put("binop", "constant", "value");
 		AVAIL_TRAITS.put("binop", "local", "value");
@@ -179,23 +186,27 @@ public class Compiler {
 		AVAIL_ATTR.put("alloc", "constrArgs", "alloc");
 		AVAIL_ATTR.put("alloc", "kind", "value");
 		AVAIL_ATTR.put("alloc", "type", "value");
+		AVAIL_ATTR.put("alloc", "host", "value");
 		AVAIL_TRAITS.put("alloc", "null", "value");
 		AVAIL_TRAITS.put("alloc", "constant", "value");
 		AVAIL_TRAITS.put("alloc", "local", "value");
 		AVAIL_ATTR.put("stmt", "method_call", "invoke_stmt");
 		AVAIL_ATTR.put("stmt", "kind", "stmt");
+		AVAIL_ATTR.put("stmt", "host", "stmt");
 		AVAIL_ATTR.put("stmt", "lhs", "assign_stmt");
 		AVAIL_ATTR.put("stmt", "rhs", "assign_stmt");
 		AVAIL_ATTR.put("new_array", "size", "new_array");
 		AVAIL_ATTR.put("new_array", "baseType", "new_array");
 		AVAIL_ATTR.put("new_array", "kind", "value");
 		AVAIL_ATTR.put("new_array", "type", "value");
+		AVAIL_ATTR.put("new_array", "host", "value");
 		AVAIL_TRAITS.put("new_array", "null", "value");
 		AVAIL_TRAITS.put("new_array", "constant", "value");
 		AVAIL_TRAITS.put("new_array", "local", "value");
 		AVAIL_ATTR.put("instance_fieldref", "field", "fieldref");
 		AVAIL_ATTR.put("instance_fieldref", "kind", "value");
 		AVAIL_ATTR.put("instance_fieldref", "type", "value");
+		AVAIL_ATTR.put("instance_fieldref", "host", "value");
 		AVAIL_TRAITS.put("instance_fieldref", "null", "value");
 		AVAIL_TRAITS.put("instance_fieldref", "constant", "value");
 		AVAIL_TRAITS.put("instance_fieldref", "local", "value");
@@ -205,12 +216,14 @@ public class Compiler {
 		AVAIL_ATTR.put("instance_method_call", "receiver", "instance_method_call");
 		AVAIL_ATTR.put("instance_method_call", "kind", "value");
 		AVAIL_ATTR.put("instance_method_call", "type", "value");
+		AVAIL_ATTR.put("instance_method_call", "host", "value");
 		AVAIL_TRAITS.put("instance_method_call", "null", "value");
 		AVAIL_TRAITS.put("instance_method_call", "constant", "value");
 		AVAIL_TRAITS.put("instance_method_call", "local", "value");
 		AVAIL_ATTR.put("fieldref", "field", "fieldref");
 		AVAIL_ATTR.put("fieldref", "kind", "value");
 		AVAIL_ATTR.put("fieldref", "type", "value");
+		AVAIL_ATTR.put("fieldref", "host", "value");
 		AVAIL_TRAITS.put("fieldref", "null", "value");
 		AVAIL_TRAITS.put("fieldref", "constant", "value");
 		AVAIL_TRAITS.put("fieldref", "local", "value");
@@ -219,6 +232,7 @@ public class Compiler {
 		AVAIL_ATTR.put("cast_expr", "castee", "cast_expr");
 		AVAIL_ATTR.put("cast_expr", "kind", "value");
 		AVAIL_ATTR.put("cast_expr", "type", "value");
+		AVAIL_ATTR.put("cast_expr", "host", "value");
 		AVAIL_TRAITS.put("cast_expr", "null", "value");
 		AVAIL_TRAITS.put("cast_expr", "constant", "value");
 		AVAIL_TRAITS.put("cast_expr", "local", "value");
@@ -238,6 +252,7 @@ public class Compiler {
 		AVAIL_ATTR.put("value", "receiver", "instance_method_call");
 		AVAIL_ATTR.put("value", "kind", "value");
 		AVAIL_ATTR.put("value", "type", "value");
+		AVAIL_ATTR.put("value", "host", "value");
 		AVAIL_TRAITS.put("value", "null", "value");
 		AVAIL_TRAITS.put("value", "constant", "value");
 		AVAIL_TRAITS.put("value", "local", "value");
@@ -245,6 +260,7 @@ public class Compiler {
 		AVAIL_ATTR.put("value", "castee", "cast_expr");
 		AVAIL_ATTR.put("value", "base_ptr", "instance_fieldref");
 		AVAIL_ATTR.put("assign_stmt", "kind", "stmt");
+		AVAIL_ATTR.put("assign_stmt", "host", "stmt");
 		AVAIL_ATTR.put("assign_stmt", "lhs", "assign_stmt");
 		AVAIL_ATTR.put("assign_stmt", "rhs", "assign_stmt");
 		AVAIL_ATTR.put("field", "type", "field");
@@ -253,6 +269,7 @@ public class Compiler {
 		AVAIL_TRAITS.put("field", "static", "field");
 		AVAIL_ATTR.put("invoke_stmt", "method_call", "invoke_stmt");
 		AVAIL_ATTR.put("invoke_stmt", "kind", "stmt");
+		AVAIL_ATTR.put("invoke_stmt", "host", "stmt");
 		AVAIL_ATTR.put("method", "declaringClass", "method");
 		AVAIL_ATTR.put("method", "returnType", "method");
 		AVAIL_ATTR.put("method", "paramTypes", "method");
@@ -261,6 +278,8 @@ public class Compiler {
 	
 	public static class CompileContext {
 		public HashMap<String, String> utilMethods = new HashMap<>();
+		public HashMap<String, List<String>> stringSets = new HashMap<>();
+		private final HashMap<String, List<String>> intSets = new HashMap<>();
 		public void addUtilityMethod(final String name, final String body) {
 			utilMethods.put(name, body);
 		}
@@ -269,6 +288,35 @@ public class Compiler {
 			for(final String m : utilMethods.values()) {
 				ps.append(m).append('\n');
 			}
+			
+			for(final String intSetName : intSets.keySet()) {
+				ps.append("private java.util.Set<java.lang.Integer> ").append(intSetName).append(" = new java.util.HashSet<>();\n");
+			}
+			for(final String intSetName : stringSets.keySet()) {
+				ps.append("private java.util.Set<java.lang.String> ").append(intSetName).append(" = new java.util.HashSet<>();\n");
+			}
+			ps.append("{\n");
+			for(final Map.Entry<String, List<String>> strSetSpec : stringSets.entrySet()) {
+				final String varName = strSetSpec.getKey();
+				for(final String elem : strSetSpec.getValue()) {
+					ps.append(varName).append(".add(\"").append(elem.substring(1, elem.length() - 1)).append("\");\n");
+				}
+			}
+			for(final Map.Entry<String, List<String>> intSetSpec : intSets.entrySet()) {
+				final String varName = intSetSpec.getKey();
+				for(final String elem : intSetSpec.getValue()) {
+					ps.append(varName).append(".add(").append(elem).append(");\n");
+				}
+			}
+			ps.append("}");
+		}
+
+		public void addStringSet(final String fieldName, final List<String> members) {
+			this.stringSets.put(fieldName, members);
+		}
+
+		public void addIntSet(final String fieldName, final List<String> members) {
+			this.intSets .put(fieldName, members);
 		}
 	}
 	
@@ -291,23 +339,50 @@ public class Compiler {
 			}
 		});
 	}
+	
+	private static int inCounter = 0;
 
 	public String translateComparison(final String inputValue, final String valueType,
-			final List<String> attributeList, final String targetConstant, final String op, final CompileContext ctxt) {
+			final List<String> attributeList, final PredicateAtom atom, final String op, final CompileContext ctxt) {
 		final String accum = inputValue;
 		final String currType = valueType;
 		final F2<String, String, String> cont = new F2<String, String, String>() {
 			@Override
 			public String f(final String accum, final String currType) {
+				String target;
+				if(op.equals("in")) {
+					final String setName;
+					if(currType.equals("STRING")) {
+						setName = "in_string_set_" + (inCounter++);
+						ctxt.addStringSet(setName, atom.targetList());
+					} else {
+						setName = "in_int_set_" + (inCounter++);
+						ctxt.addIntSet(setName, atom.targetList());
+					}
+					return setName + ".contains(" + accum + ")";
+				}
+				if(atom.targetList() == null) {
+					target = "\"" + atom.target().substring(1, atom.target().length() - 1) + "\"";
+				} else {
+					target = translateLoop(atom.targetList(), ctxt, inputValue, valueType, new F2<String, String, String>() {
+						@Override
+						public String f(final String accum, final String typ) {
+							if(!typ.equals(currType)) {
+								throw new RuntimeException("Type mismatch!"); 
+							}
+							return accum;
+						}
+					});
+				}
 				if(currType.equals("STRING")) {
-					final String equalsCheck = accum + ".equals(\"" + targetConstant.substring(1, targetConstant.length() - 1) + "\")";
+					final String equalsCheck = accum + ".equals(" + target + ")";
 					if(op.equals("==")) {
 						return equalsCheck;
 					} else {
 						return "!" + equalsCheck;
 					}
 				} else {
-					return accum + " " + op + " " + targetConstant; 
+					return accum + " " + op + " " + target; 
 				}
 			}
 		};
@@ -375,8 +450,8 @@ public class Compiler {
     		exprQueries.add(q);
     	}
     }
-    addInterpreter(sb, context, c, exprQueries, "soot.Value", "value");
-    addInterpreter(sb, context, c, stmtQueries, "soot.jimple.Stmt", "stmt");
+    addInterpreter(sb, context, c, exprQueries, "soot.ValueBox", "value", ".getValue()");
+    addInterpreter(sb, context, c, stmtQueries, "soot.jimple.Stmt", "stmt", "");
     context.dumpHelperMethods(sb); 
     sb.append("}\n");
 
@@ -417,6 +492,7 @@ public class Compiler {
 						System.out.println(diagnostic.getMessage(null));
 						System.out.format("Error on line %d in %s%n", diagnostic.getLineNumber(), diagnostic.getSource().toUri());
 					}
+					throw new RuntimeException();
 				}
 				fileManager.close();
 			} catch (final IOException exp) {
@@ -427,11 +503,11 @@ public class Compiler {
 	}
 
 	private static void addInterpreter(final StringBuilder sb, final CompileContext context, final Compiler c, final List<Query> exprQueries,
-			final String javaType, final String startType) {
-		sb.append("public boolean interpret(String q, ").append(javaType).append(" v) {\n");
+			final String javaType, final String startType, final String startTransformer) {
+		sb.append("public boolean interpret(String q, final ").append(javaType).append(" ").append(ARG_NAME).append(") {\n");
     for(final Query q : exprQueries) {
     	sb.append("if(q.equals(\"").append(q.name()).append("\")) {\n");
-    	sb.append("return ").append(c.translatePredicate("v", startType, q.getPredicate(), context)).append(";");
+    	sb.append("return ").append(c.translatePredicate(ARG_NAME + startTransformer, startType, q.getPredicate(), context)).append(";");
     	sb.append("\n} else ");
     }
     sb.append("{ throw new java.lang.IllegalArgumentException(); }\n");
@@ -458,7 +534,7 @@ public class Compiler {
 		} else {
 			final PredicateAtom atom = predicate.atom();
 			if(atom.type() == Type.ATTRIBUTE_CHECK) {
-				return this.translateComparison(valueExpr, valueType, atom.attributeList(), atom.target(), atom.op(), ctxt);
+				return this.translateComparison(valueExpr, valueType, atom.attributeList(), atom, atom.op(), ctxt);
 			} else {
 				return this.translateTrait(valueExpr, valueType, atom.attributeList(), atom.target(), atom.is(), ctxt);
 			}
