@@ -19,9 +19,10 @@ if not found:
     subprocess.call(["aws", "ec2", "authorize-security-group-ingress", "--protocol", "tcp", "--port", "0-65535", "--cidr", my_ip + "/32", "--group-id", target_sg])
 d = json.loads(subprocess.check_output(["aws", "ec2", "describe-instances"]))
 address_map = {}
-for inst in d["Reservations"][0]["Instances"]:
-    if inst["State"]["Name"] != "running":
-        continue
-    address_map[inst["PrivateDnsName"]] = inst["PublicIpAddress"]
+for res in d["Reservations"]:
+    for inst in res["Instances"]:
+        if inst["State"]["Name"] != "running":
+            continue
+        address_map[inst["PrivateDnsName"]] = inst["PublicIpAddress"]
 print "Lauching host editor with sudo..."
 subprocess.check_call(["sudo", "python", "./edit_hosts.py", pickle.dumps(address_map)])

@@ -4,16 +4,22 @@ address_map = pickle.loads(sys.argv[1])
 print address_map
 
 lines = []
+found_hosts = set()
 with open('/etc/hosts', 'r') as f:
     for l in f:
         found = False
         for (k, v) in address_map.iteritems():
             if k in l:
                 lines.append(v + " " + k + "\n")
+                found_hosts.add(k)
                 found = True
                 break
         if not found:
             lines.append(l)
+for (k, v) in address_map.iteritems():
+    if k in found_hosts:
+        continue
+    lines.append(v + " " + k + "\n")
 new_host_blob = "".join(lines)
 host_temp = tempfile.NamedTemporaryFile()
 print >> host_temp, new_host_blob,
