@@ -63,11 +63,12 @@ public class Compiler {
 		TRAITS.put("array_ref", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
 		TRAITS.put("array_ref", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
 		TRAITS.put("array_ref", "local", new InlineTranslator("{0} instanceof soot.Local"));
-		ATTR.put("binop", "operands", new BlockTranslator("soot.jimple.internal.AbstractBinopExpr", "java.util.List<soot.Value>", "// $BLOCK$\n" +
-				"java.util.List<Value> toReturn = new java.util.ArrayList<>();\n" +
-				"toReturn.add({0}.getOp1());\n" +
-				"toReturn.add({1}.getOp2());\n" +
-				"return toReturn;\n", "value"));
+		ATTR.put("binop", "operands", new BlockTranslator("soot.jimple.internal.AbstractBinopExpr", "java.util.List<soot.Value>", "// $BLOCK$\n" + 
+		"java.util.List<Value> toReturn = new java.util.ArrayList<>();\n" + 
+		"toReturn.add({0}.getOp1());\n" + 
+		"toReturn.add({1}.getOp2());\n" + 
+		"return toReturn;\n" + 
+		"\n", "value"));
 		ATTR.put("binop", "lop", new InlineTranslator("{0}.getOp1()", "value"));
 		ATTR.put("binop", "rop", new InlineTranslator("{0}.getOp2()", "value"));
 		TYPE_TABLE.put("binop", "soot.jimple.internal.AbstractBinopExpr");
@@ -80,17 +81,21 @@ public class Compiler {
 		TRAITS.put("alloc", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
 		TRAITS.put("alloc", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
 		TRAITS.put("alloc", "local", new InlineTranslator("{0} instanceof soot.Local"));
-		ATTR.put("stmt", "kind", new BlockTranslator("soot.jimple.Stmt", "String", "// $BLOCK$\nif({0} instanceof soot.jimple.AssignStmt) {\n   return \"Assign\";\n} " +
-				"else if({0} instanceof soot.jimple.InvokeStmt) {\n   return \"Invoke\";\n} " +
-				"else {\n   return \"Other\";\n}\n", "STRING"));
+		ATTR.put("stmt", "kind", new BlockTranslator("soot.jimple.Stmt", "String", "// $BLOCK$\n" + 
+		"if({0} instanceof soot.jimple.AssignStmt) {\n" + 
+		"   return \"Assign\";\n" + 
+		"} else if({0} instanceof soot.jimple.InvokeStmt) {\n" + 
+		"   return \"Invoke\";\n" + 
+		"} else if({0} instanceof soot.jimple.ReturnStmt) {\n" + 
+		"   return \"Return\";\n" + 
+		"} else {\n" + 
+		"   return \"Other\";\n" + 
+		"}\n" + 
+		"\n", "STRING"));
 		ATTR.put("stmt", "host", new InlineTranslator("soot.Scene.v().grabMethod(new java.lang.String(toCheck.getTag(\"HostMethod\").getValue())).makeRef()", "method"));
 		TYPE_TABLE.put("stmt", "soot.jimple.Stmt");
-		ATTR.put("new_array", "size", new InlineTranslator("{0}.getSize()", "value"));
-		ATTR.put("new_array", "baseType", new InlineTranslator("{0}.getBaseType().toString()", "STRING"));
-		TYPE_TABLE.put("new_array", "soot.jimple.NewArrayExpr");
-		TRAITS.put("new_array", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("new_array", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("new_array", "local", new InlineTranslator("{0} instanceof soot.Local"));
+		ATTR.put("return_stmt", "ret_val", new InlineTranslator("{0}.getOp()", "value"));
+		TYPE_TABLE.put("return_stmt", "soot.jimple.ReturnStmt");
 		ATTR.put("instance_fieldref", "base_ptr", new InlineTranslator("{0}.getBase()", "value"));
 		TYPE_TABLE.put("instance_fieldref", "soot.jimple.InstanceFieldRef");
 		TRAITS.put("instance_fieldref", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
@@ -112,26 +117,46 @@ public class Compiler {
 		TRAITS.put("cast_expr", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
 		TRAITS.put("cast_expr", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
 		TRAITS.put("cast_expr", "local", new InlineTranslator("{0} instanceof soot.Local"));
-		ATTR.put("value", "kind", new BlockTranslator("soot.Value", "String", "// $BLOCK$\nif({0} instanceof soot.jimple.ArrayRef) {" +
-				"\n  return \"ArrayRead\";\n} else if({0} instanceof soot.jimple.InstanceFieldRef) {\n  return \"InstanceField\";\n} " +
-				"else if({0} instanceof soot.jimple.StaticFieldRef) {\n  return \"StaticField\";\n} " +
-				"else if({0} instanceof soot.grimp.internal.GNewInvokeExpr) {\n  return \"New\";\n} " +
-				"else if({0} instanceof soot.jimple.internal.AbstractBinopExpr) {\n  return \"Binop\";\n} " +
-				"else if({0} instanceof soot.jimple.CastExpr) {\n  return \"Cast\";\n} " +
-				"else if({0} instanceof soot.jimple.internal.AbstractUnopExpr) {\n  return \"Unop\";\n} " +
-				"else if({0} instanceof soot.jimple.StaticInvokeExpr) {\n  return \"StaticInvoke\";\n} " +
-				"else if({0} instanceof soot.jimple.InstanceInvokeExpr) {\n  return \"InstanceInvoke\";\n} " +
-				"else if({0} instanceof soot.jimple.Constant) {\n   return \"Constant\";\n} " +
-				"else {\n   return \"Other\";\n}\n", "STRING"));
+		ATTR.put("value", "kind", new BlockTranslator("soot.Value", "String", "// $BLOCK$\n" + 
+		"if({0} instanceof soot.jimple.ArrayRef) {\n" + 
+		"  return \"ArrayRead\";\n" + 
+		"} else if({0} instanceof soot.jimple.InstanceFieldRef) {\n" + 
+		"  return \"InstanceField\";\n" + 
+		"} else if({0} instanceof soot.jimple.StaticFieldRef) {\n" + 
+		"  return \"StaticField\";\n" + 
+		"} else if({0} instanceof soot.grimp.internal.GNewInvokeExpr) {\n" + 
+		"  return \"New\";\n" + 
+		"} else if({0} instanceof soot.jimple.internal.AbstractBinopExpr) {\n" + 
+		"  return \"Binop\";\n" + 
+		"} else if({0} instanceof soot.jimple.CastExpr) {\n" + 
+		"  return \"Cast\";\n" + 
+		"} else if({0} instanceof soot.jimple.internal.AbstractUnopExpr) {\n" + 
+		"  return \"Unop\";\n" + 
+		"} else if({0} instanceof soot.jimple.StaticInvokeExpr) {\n" + 
+		"  return \"StaticInvoke\";\n" + 
+		"} else if({0} instanceof soot.jimple.InstanceInvokeExpr) {\n" + 
+		"  return \"InstanceInvoke\";\n" + 
+		"} else if({0} instanceof soot.jimple.Constant) {\n" + 
+		"   return \"Constant\";\n" + 
+		"} else {\n" + 
+		"   return \"Other\";\n" + 
+		"}\n" + 
+		"\n", "STRING"));
 		ATTR.put("value", "type", new InlineTranslator("{0}.getType().toString()", "STRING"));
+		ATTR.put("value", "host", new InlineTranslator("soot.Scene.v().grabMethod(new java.lang.String(toCheck.getTag(\"HostMethod\").getValue())).makeRef()", "method"));
 		TYPE_TABLE.put("value", "soot.Value");
 		TRAITS.put("value", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
 		TRAITS.put("value", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
 		TRAITS.put("value", "local", new InlineTranslator("{0} instanceof soot.Local"));
-		ATTR.put("value", "host", new InlineTranslator("soot.Scene.v().grabMethod(new java.lang.String(toCheck.getTag(\"HostMethod\").getValue())).makeRef()", "method"));
 		ATTR.put("assign_stmt", "lhs", new InlineTranslator("{0}.getLeftOp()", "value"));
 		ATTR.put("assign_stmt", "rhs", new InlineTranslator("{0}.getRightOp()", "value"));
 		TYPE_TABLE.put("assign_stmt", "soot.jimple.AssignStmt");
+		ATTR.put("new_array", "size", new InlineTranslator("{0}.getSize()", "value"));
+		ATTR.put("new_array", "baseType", new InlineTranslator("{0}.getBaseType().toString()", "STRING"));
+		TYPE_TABLE.put("new_array", "soot.jimple.NewArrayExpr");
+		TRAITS.put("new_array", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
+		TRAITS.put("new_array", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
+		TRAITS.put("new_array", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("field", "type", new InlineTranslator("{0}.type().toString()", "STRING"));
 		ATTR.put("field", "name", new InlineTranslator("{0}.name()", "STRING"));
 		ATTR.put("field", "declaringClass", new InlineTranslator("{0}.declaringClass().getName()", "STRING"));
@@ -141,13 +166,15 @@ public class Compiler {
 		TYPE_TABLE.put("invoke_stmt", "soot.jimple.InvokeStmt");
 		ATTR.put("method", "declaringClass", new InlineTranslator("{0}.declaringClass().getName()", "STRING"));
 		ATTR.put("method", "returnType", new InlineTranslator("{0}.getReturnType().toString()", "STRING"));
-		ATTR.put("method", "paramTypes", new BlockTranslator("soot.SootMethodRef", "java.util.List<String>", "// $BLOCK$\n" +
-				"java.util.List<String> toReturn = new java.util.ArrayList<>();\n" +
-				"for(Type t : {0}.parameterTypes()) {\n  " +
-				"toReturn.add(t.toString());\n" +
-				"}\n" +
-				"return toReturn;\n", "STRING"));
+		ATTR.put("method", "paramTypes", new BlockTranslator("soot.SootMethodRef", "java.util.List<String>", "// $BLOCK$\n" + 
+		"java.util.List<String> toReturn = new java.util.ArrayList<>();\n" + 
+		"for(Type t : {0}.parameterTypes()) {\n" + 
+		"  toReturn.add(t.toString());\n" + 
+		"}\n" + 
+		"return toReturn;\n" + 
+		"\n", "STRING"));
 		ATTR.put("method", "name", new InlineTranslator("{0}.name()", "STRING"));
+		ATTR.put("method", "signature", new InlineTranslator("{0}.getSignature()", "STRING"));
 		TYPE_TABLE.put("method", "soot.SootMethodRef");
 		AVAIL_ATTR.put("unop", "operand", "unop");
 		AVAIL_ATTR.put("unop", "kind", "value");
@@ -191,18 +218,14 @@ public class Compiler {
 		AVAIL_TRAITS.put("alloc", "constant", "value");
 		AVAIL_TRAITS.put("alloc", "local", "value");
 		AVAIL_ATTR.put("stmt", "method_call", "invoke_stmt");
+		AVAIL_ATTR.put("stmt", "ret_val", "return_stmt");
 		AVAIL_ATTR.put("stmt", "kind", "stmt");
 		AVAIL_ATTR.put("stmt", "host", "stmt");
 		AVAIL_ATTR.put("stmt", "lhs", "assign_stmt");
 		AVAIL_ATTR.put("stmt", "rhs", "assign_stmt");
-		AVAIL_ATTR.put("new_array", "size", "new_array");
-		AVAIL_ATTR.put("new_array", "baseType", "new_array");
-		AVAIL_ATTR.put("new_array", "kind", "value");
-		AVAIL_ATTR.put("new_array", "type", "value");
-		AVAIL_ATTR.put("new_array", "host", "value");
-		AVAIL_TRAITS.put("new_array", "null", "value");
-		AVAIL_TRAITS.put("new_array", "constant", "value");
-		AVAIL_TRAITS.put("new_array", "local", "value");
+		AVAIL_ATTR.put("return_stmt", "ret_val", "return_stmt");
+		AVAIL_ATTR.put("return_stmt", "kind", "stmt");
+		AVAIL_ATTR.put("return_stmt", "host", "stmt");
 		AVAIL_ATTR.put("instance_fieldref", "field", "fieldref");
 		AVAIL_ATTR.put("instance_fieldref", "kind", "value");
 		AVAIL_ATTR.put("instance_fieldref", "type", "value");
@@ -244,8 +267,6 @@ public class Compiler {
 		AVAIL_ATTR.put("value", "field", "fieldref");
 		AVAIL_ATTR.put("value", "index", "array_ref");
 		AVAIL_ATTR.put("value", "array", "array_ref");
-		AVAIL_ATTR.put("value", "size", "new_array");
-		AVAIL_ATTR.put("value", "baseType", "new_array");
 		AVAIL_ATTR.put("value", "operands", "binop");
 		AVAIL_ATTR.put("value", "lop", "binop");
 		AVAIL_ATTR.put("value", "rop", "binop");
@@ -256,6 +277,8 @@ public class Compiler {
 		AVAIL_TRAITS.put("value", "null", "value");
 		AVAIL_TRAITS.put("value", "constant", "value");
 		AVAIL_TRAITS.put("value", "local", "value");
+		AVAIL_ATTR.put("value", "size", "new_array");
+		AVAIL_ATTR.put("value", "baseType", "new_array");
 		AVAIL_ATTR.put("value", "cast_type", "cast_expr");
 		AVAIL_ATTR.put("value", "castee", "cast_expr");
 		AVAIL_ATTR.put("value", "base_ptr", "instance_fieldref");
@@ -263,6 +286,14 @@ public class Compiler {
 		AVAIL_ATTR.put("assign_stmt", "host", "stmt");
 		AVAIL_ATTR.put("assign_stmt", "lhs", "assign_stmt");
 		AVAIL_ATTR.put("assign_stmt", "rhs", "assign_stmt");
+		AVAIL_ATTR.put("new_array", "size", "new_array");
+		AVAIL_ATTR.put("new_array", "baseType", "new_array");
+		AVAIL_ATTR.put("new_array", "kind", "value");
+		AVAIL_ATTR.put("new_array", "type", "value");
+		AVAIL_ATTR.put("new_array", "host", "value");
+		AVAIL_TRAITS.put("new_array", "null", "value");
+		AVAIL_TRAITS.put("new_array", "constant", "value");
+		AVAIL_TRAITS.put("new_array", "local", "value");
 		AVAIL_ATTR.put("field", "type", "field");
 		AVAIL_ATTR.put("field", "name", "field");
 		AVAIL_ATTR.put("field", "declaringClass", "field");
@@ -274,6 +305,7 @@ public class Compiler {
 		AVAIL_ATTR.put("method", "returnType", "method");
 		AVAIL_ATTR.put("method", "paramTypes", "method");
 		AVAIL_ATTR.put("method", "name", "method");
+		AVAIL_ATTR.put("method", "signature", "method");
 	}
 	
 	public static class CompileContext {

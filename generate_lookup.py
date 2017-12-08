@@ -17,6 +17,12 @@ def dump_trait(target, trait_host, trait_name):
         target, trait_name, json.dumps(trans[trait_host][trait_name])
     )
 
+def translate_multine(multi_line):
+    accum = []
+    for l in multi_line.split("\n"):
+        accum.append(json.dumps(l + "\n"))
+    return " + \n".join(accum)
+
 def dump_attr(target, attr_host, attr_name, value_type):
     if value_type == "STRING":
         java_type = "String"
@@ -36,7 +42,7 @@ def dump_attr(target, attr_host, attr_name, value_type):
             attr_name,
             input_type,
             java_type,
-            json.dumps(attr_generator),
+            translate_multine(attr_generator),
             value_type,
         )
     else:

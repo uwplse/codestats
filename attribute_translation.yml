@@ -19,7 +19,7 @@ value:
       return "StaticInvoke";
     } else if({0} instanceof soot.jimple.InstanceInvokeExpr) {
       return "InstanceInvoke";
-    } else if({0} instanceof soot.jimple.rConstant) {
+    } else if({0} instanceof soot.jimple.Constant) {
        return "Constant";
     } else {
        return "Other";
@@ -45,6 +45,7 @@ method:
     }
     return toReturn;
   name: "{0}.name()"
+  signature: "{0}.getSignature()"
 binop:
   lop: "{0}.getOp1()"
   rop: "{0}.getOp2()"
@@ -84,6 +85,8 @@ stmt:
        return "Assign";
     } else if({0} instanceof soot.jimple.InvokeStmt) {
        return "Invoke";
+    } else if({0} instanceof soot.jimple.ReturnStmt) {
+       return "Return";
     } else {
        return "Other";
     }
@@ -93,3 +96,5 @@ invoke_stmt:
 assign_stmt:
   lhs: "{0}.getLeftOp()"
   rhs: "{0}.getRightOp()"
+return_stmt:
+  ret_val: "{0}.getOp()"

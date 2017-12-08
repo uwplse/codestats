@@ -26,6 +26,7 @@ method:
     - [ "returnType", "STRING" ]
     - [ "*paramTypes", "STRING" ]
     - [ "name", "STRING" ]
+    - [ "signature", "STRING" ]
 binop:
   extends: value
   type: "soot.jimple.internal.AbstractBinopExpr"
@@ -97,3 +98,8 @@ assign_stmt:
   attributes:
     - [ "lhs", "value" ]
     - [ "rhs", "value" ]
+return_stmt:
+  extends: stmt
+  type: "soot.jimple.ReturnStmt"
+  attributes:
+    - [ "ret_val", "value" ]
