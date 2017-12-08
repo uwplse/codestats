@@ -1,7 +1,9 @@
 package edu.washington.cse.codestats.runner;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -25,7 +27,16 @@ import edu.washington.cse.codestats.hadoop.StatReducer;
 public class Runner {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static void main(final String args[]) throws IOException, ClassNotFoundException, InterruptedException, ParseException, TokenMgrError {
-		final CompiledQuery q = Compiler.compile(args[0]);
+		String programText;
+		if (args[0].equals("-")) {
+			BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+			programText = "";
+			while (input.ready())
+				programText += input.readLine();
+		} else {
+			programText = args[0];
+		}
+		final CompiledQuery q = Compiler.compile(programText);
 		final Configuration conf = new Configuration();
 		final FileSystem fs = FileSystem.get(conf);
 		final Job j = Job.getInstance(conf, "code stats");
