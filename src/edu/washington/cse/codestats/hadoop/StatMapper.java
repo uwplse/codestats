@@ -306,15 +306,15 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 			} catch(final InterpreterFailedException e) {
 				bumpCounter(context, Diagnostics.INTERPRETER_ERROR);
 				e.printStackTrace();
-				recordFailedMethod(context);
+				recordFailedMethod(context, m, e);
 				continue;
 			} catch(final OutOfMemoryError e) {
 				bumpCounter(context, Diagnostics.OOM_METHOD);
-				recordFailedMethod(context);
+				recordFailedMethod(context, m, e);
 				continue;
 			} catch(final Exception e) {
 				e.printStackTrace();
-				recordFailedMethod(context);
+				recordFailedMethod(context, m, e);
 				continue;
 			}
 			writeMethodResults(context);
@@ -373,11 +373,14 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 		context.write(outputValue, count);
 	}
 
-	private void recordFailedMethod(final Context context) throws IOException, InterruptedException {
+	private void recordFailedMethod(final Context context, final SootMethod m, final Throwable e) throws IOException, InterruptedException {
 		if(context != null) {
 			context.getCounter(Diagnostics.FAILED_METHODS).increment(1L);
 			writeQueryIncrement(FAILED_METHOD_KEY, context);
 		}
+		System.err.println("Failed on " + m);
+		System.err.println(">> STACKTRACE: ");
+		e.printStackTrace();
 	}
 	
 	private <T, M> void runQueryTree(final T val, final QueryGroup<T, M> qg, final F2<String, T, Boolean> interp, final MatchEffect<T, M> me) {
