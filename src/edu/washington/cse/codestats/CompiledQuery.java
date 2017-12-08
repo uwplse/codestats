@@ -31,7 +31,7 @@ public class CompiledQuery {
 	}
 
 	public void configure(final Job j) throws IOException {
-		j.getConfiguration().set(StatMapper.INTERPRETER_CLASS_NAME, interpreterName);
+		j.getConfiguration().set(StatMapper.INTERPRETER_CLASS_NAME, getInterpreterName());
 		
 		serializeTree(j.getConfiguration(), queryTree);
 	}
@@ -46,5 +46,13 @@ public class CompiledQuery {
 	public static void readTree(final Configuration config, final QueryTree qt) throws IOException {
 		final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(Base64.decodeBase64(config.get(QUERY_TREE))));
 		qt.readFields(dis);
+	}
+
+	public String getInterpreterName() {
+		return interpreterName;
+	}
+
+	public QueryTree getQueryTree() {
+		return queryTree;
 	}
 }

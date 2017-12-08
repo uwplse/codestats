@@ -43,7 +43,7 @@ public class Runner {
 		j.setMapOutputKeyClass(Text.class);
 		j.setMapOutputValueClass(LongWritable.class);
 		SequenceFileInputFormat.setInputDirRecursive(j, true);
-		SequenceFileInputFormat.addInputPaths(j, "/user/jtoman/test-inputs");
+		SequenceFileInputFormat.addInputPaths(j, "/user/jtoman/inputs");
 		fs.delete(new Path("/user/jtoman/output"), true);
 		FileOutputFormat.setOutputPath(j, new Path("/user/jtoman/output"));
 		j.setOutputKeyClass(Text.class);
