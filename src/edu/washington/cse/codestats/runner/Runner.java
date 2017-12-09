@@ -1,11 +1,12 @@
 package edu.washington.cse.codestats.runner;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -27,19 +28,14 @@ import edu.washington.cse.codestats.hadoop.StatReducer;
 public class Runner {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static void main(final String args[]) throws IOException, ClassNotFoundException, InterruptedException, ParseException, TokenMgrError {
+		final String queryName = args[0];
 		String programText;
-		if (args[0].equals("-")) {
-			BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
-			programText = "";
-			while (input.ready())
-				programText += input.readLine();
-		} else {
-			programText = args[0];
-		}
+		final String rawQuery = args[1];
+		programText = readQuery(rawQuery);
 		final CompiledQuery q = Compiler.compile(programText);
 		final Configuration conf = new Configuration();
 		final FileSystem fs = FileSystem.get(conf);
-		final Job j = Job.getInstance(conf, "code stats");
+		final Job j = Job.getInstance(conf, "code stats: " + queryName);
 		for(final FileStatus stat : fs.listStatus(new Path("/user/jtoman/codestat-jars"))) {
 			j.addArchiveToClassPath(stat.getPath());
 		}
@@ -55,8 +51,9 @@ public class Runner {
 		j.setMapOutputValueClass(LongWritable.class);
 		SequenceFileInputFormat.setInputDirRecursive(j, true);
 		SequenceFileInputFormat.addInputPaths(j, "/user/jtoman/inputs");
-		fs.delete(new Path("/user/jtoman/output"), true);
-		FileOutputFormat.setOutputPath(j, new Path("/user/jtoman/output"));
+		final Path outputPath = new Path("/user/jtoman/output/" + queryName);
+		fs.delete(outputPath, true);
+		FileOutputFormat.setOutputPath(j, outputPath);
 		j.setOutputKeyClass(Text.class);
 		j.setOutputValueClass(LongWritable.class);
 		q.configure(j);
@@ -69,5 +66,15 @@ public class Runner {
 		fs.deleteOnExit(tmpJarPath);
 		j.submit();
 		j.waitForCompletion(true);
+	}
+
+	public static String readQuery(final String rawQuery) throws IOException {
+		String programText;
+		if (rawQuery.equals("-")) {
+			programText = StringUtils.join(IOUtils.readLines(System.in, Charset.defaultCharset()), "\n");
+		} else {
+			programText = rawQuery;
+		}
+		return programText;
 	}
 }

@@ -26,6 +26,7 @@ import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.math.NumberUtils;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -138,6 +139,8 @@ public class Compiler {
 		"  return \"InstanceInvoke\";\n" + 
 		"} else if({0} instanceof soot.jimple.Constant) {\n" + 
 		"   return \"Constant\";\n" + 
+		"} else if({0} instanceof soot.jimple.NewArrayExpr) {\n" + 
+		"   return \"NewArray\";\n" + 
 		"} else {\n" + 
 		"   return \"Other\";\n" + 
 		"}\n" + 
@@ -340,7 +343,7 @@ public class Compiler {
 					ps.append(varName).append(".add(").append(elem).append(");\n");
 				}
 			}
-			ps.append("}");
+			ps.append("}\n");
 		}
 
 		public void addStringSet(final String fieldName, final List<String> members) {
@@ -437,11 +440,24 @@ public class Compiler {
 				final String elemType = t.getOutputType();
 				final String elemJavaType = TYPE_TABLE.get(elemType);
 				final String toIterate = t.translate(casted, containingType, currAttr, ctxt);
-				this.addForallExists(ctxt);
-				final String perElemPred = this.translateLoop(attributeList.subList(i+2, attributeList.size()), ctxt, "arg", elemType, cont);
-				return String.format("this.forallExists(%s, new fj.F<%s, Boolean>() { public Boolean f(%s arg) { return %s; } })",
-					toIterate, elemJavaType, elemJavaType, perElemPred
-				);
+				final String index = attributeList.get(i+1);
+				if(index.equals("*")) {
+					this.addForallExists(ctxt);
+					final String perElemPred = this.translateLoop(attributeList.subList(i+2, attributeList.size()), ctxt, "arg", elemType, cont);
+					return String.format("this.forallExists(%s, new fj.F<%s, Boolean>() { public Boolean f(%s arg) { return %s; } })",
+						toIterate, elemJavaType, elemJavaType, perElemPred
+					);
+				} else if(index.equals("?")) {
+					this.addAnyExists(ctxt);
+					final String perElementPred = this.translateLoop(attributeList.subList(i+2, attributeList.size()), ctxt, "arg", elemType, cont);
+					return String.format("this.anyExists(%s, new fj.F<%s, Boolean>() { public Boolean f(%s arg) { return %s; } })",
+						toIterate, elemJavaType, elemJavaType, perElementPred
+					);
+				} else {
+					accum = toIterate + ".get(" + attributeList.get(i + 1) + ")";
+					currType = t.getOutputType();
+					i++;
+				}
 			} else if(i == attributeList.size() - 2 && attributeList.get(i+1).equals("length")) {
 				accum = t.translate(casted, containingType, currAttr, ctxt) + ".size()";
 				currType = "INT";
@@ -455,6 +471,13 @@ public class Compiler {
 		return cont.f(accum, currType);
 	}
 
+	private void addAnyExists(final CompileContext ctxt) {
+		ctxt.addUtilityMethod("forallExists", "public <T> boolean anyExists(java.lang.Iterable<T> toStream, fj.F<T, Boolean> pred) {\n" +
+				"fj.data.Stream<T> stream = fj.data.Stream.iterableStream(toStream);\n" +
+				"return stream.isNotEmpty() && stream.exists(pred);\n" +
+				"}\n");
+	}
+
 	private void addForallExists(final CompileContext ctxt) {
 		ctxt.addUtilityMethod("forallExists", "public <T> boolean forallExists(java.lang.Iterable<T> toStream, fj.F<T, Boolean> pred) {\n" +
 				"fj.data.Stream<T> stream = fj.data.Stream.iterableStream(toStream);\n" +
@@ -463,7 +486,7 @@ public class Compiler {
 	}
 
 	private boolean isIndex(final String string) {
-		return string.equals("*");
+		return string.equals("*") || string.equals("?") || NumberUtils.isNumber(string);
 	}
 	
 	private static File compileProgram(final List<Query> prog) {
@@ -542,7 +565,7 @@ public class Compiler {
     	sb.append("return ").append(c.translatePredicate(ARG_NAME + startTransformer, startType, q.getPredicate(), context)).append(";");
     	sb.append("\n} else ");
     }
-    sb.append("{ throw new java.lang.IllegalArgumentException(); }\n");
+    sb.append("{ throw new java.lang.IllegalArgumentException(q); }\n");
     sb.append("}\n");
 	}
 
@@ -630,6 +653,45 @@ public class Compiler {
 	}
 
 	private static List<Query> parseProgram(final String string) throws ParseException, TokenMgrError {
-		return QueryParser.parse(new ByteArrayInputStream(string.getBytes()));
+		final List<Query> parsedProgram = QueryParser.parse(new ByteArrayInputStream(string.getBytes()));
+		final List<Query> toReturn = new ArrayList<>();
+		for(final Query q : parsedProgram) {
+			if(q.metric() == Metric.HYBRID) {
+				toReturn.add(new Query(q.name() + "$SUM", q.deriving() == null ? null : q.deriving() + "$SUM", Metric.SUM, q.target(), q.getPredicate()));
+				toReturn.add(new Query(q.name() + "$EXISTS", q.deriving() == null ? null : q.deriving() + "$EXISTS", Metric.EXISTS, q.target(), q.getPredicate()));
+			} else {
+				toReturn.add(q);
+			}
+		}
+		return toReturn;
+	}
+	
+	public String value_kind_2(final soot.Value arg) { // $BLOCK$
+		if(arg instanceof soot.jimple.ArrayRef) {
+			return "ArrayRead";
+		} else if(arg instanceof soot.jimple.InstanceFieldRef) {
+			return "InstanceField";
+		} else if(arg instanceof soot.jimple.StaticFieldRef) {
+			return "StaticField";
+		} else if(arg instanceof soot.grimp.internal.GNewInvokeExpr) {
+			return "New";
+		} else if(arg instanceof soot.jimple.internal.AbstractBinopExpr) {
+			return "Binop";
+		} else if(arg instanceof soot.jimple.CastExpr) {
+			return "Cast";
+		} else if(arg instanceof soot.jimple.internal.AbstractUnopExpr) {
+			return "Unop";
+		} else if(arg instanceof soot.jimple.StaticInvokeExpr) {
+			return "StaticInvoke";
+		} else if(arg instanceof soot.jimple.InstanceInvokeExpr) {
+			return "InstanceInvoke";
+		} else if(arg instanceof soot.jimple.Constant) {
+			return "Constant";
+		} else if(arg instanceof soot.jimple.NewArrayExpr) {
+			return "NewArray";
+		} else {
+			return "Other";
+		}
+
 	}
 }

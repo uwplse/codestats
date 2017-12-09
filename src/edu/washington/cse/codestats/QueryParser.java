@@ -38,7 +38,7 @@ public class QueryParser implements QueryParserConstants {
     QueryTarget target = null;
     PredicateMirror pred = null;
     name = jj_consume_token(IDENT);
-    jj_consume_token(23);
+    jj_consume_token(24);
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
     case EXISTS:
       jj_consume_token(EXISTS);
@@ -47,6 +47,10 @@ public class QueryParser implements QueryParserConstants {
     case COUNT:
       jj_consume_token(COUNT);
                                                                            metric = Metric.SUM;
+      break;
+    case HYBRID:
+      jj_consume_token(HYBRID);
+                                                                                                               metric = Metric.HYBRID;
       break;
     default:
       jj_la1[1] = jj_gen;
@@ -78,9 +82,9 @@ public class QueryParser implements QueryParserConstants {
       ;
     }
     jj_consume_token(WHERE);
-    jj_consume_token(24);
-    pred = predicate();
     jj_consume_token(25);
+    pred = predicate();
+    jj_consume_token(26);
       {if (true) return new Query(name.image, deriving == null ? null : deriving.image, metric, target, pred);}
     throw new Error("Missing return statement in function");
   }
@@ -141,10 +145,10 @@ public class QueryParser implements QueryParserConstants {
   static final public PredicateMirror atom_or_conjunction() throws ParseException {
     PredicateMirror pred;
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
-    case 26:
-      jj_consume_token(26);
-      pred = conjunction();
+    case 27:
       jj_consume_token(27);
+      pred = conjunction();
+      jj_consume_token(28);
       break;
     case IDENT:
       pred = atom();
@@ -161,12 +165,13 @@ public class QueryParser implements QueryParserConstants {
   static final public List<String> detList() throws ParseException {
   List<String> attribute = new ArrayList<String>();
   Token component = null;
+  String indexString = null;
     jj_consume_token(IDENT);
     label_4:
     while (true) {
       switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
-      case THIS:
-      case 28:
+      case INDEX:
+      case 29:
         ;
         break;
       default:
@@ -174,14 +179,14 @@ public class QueryParser implements QueryParserConstants {
         break label_4;
       }
       switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
-      case 28:
-        jj_consume_token(28);
+      case 29:
+        jj_consume_token(29);
         component = jj_consume_token(IDENT);
                                         attribute.add(component.image);
         break;
-      case THIS:
-        jj_consume_token(THIS);
-                                                                                     attribute.add("0");
+      case INDEX:
+        indexString = index();
+                                                                                                      attribute.add(indexString);
         break;
       default:
         jj_la1[8] = jj_gen;
@@ -196,7 +201,7 @@ public class QueryParser implements QueryParserConstants {
   static final public List<String> valueList() throws ParseException {
   List<String> vList = new ArrayList<String>();
   Token target_const = null;
-    jj_consume_token(26);
+    jj_consume_token(27);
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
     case STRING:
       target_const = jj_consume_token(STRING);
@@ -204,14 +209,14 @@ public class QueryParser implements QueryParserConstants {
       label_5:
       while (true) {
         switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
-        case 29:
+        case 30:
           ;
           break;
         default:
           jj_la1[9] = jj_gen;
           break label_5;
         }
-        jj_consume_token(29);
+        jj_consume_token(30);
         target_const = jj_consume_token(STRING);
                                                                                                         vList.add(target_const.image);
       }
@@ -222,14 +227,14 @@ public class QueryParser implements QueryParserConstants {
       label_6:
       while (true) {
         switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
-        case 29:
+        case 30:
           ;
           break;
         default:
           jj_la1[10] = jj_gen;
           break label_6;
         }
-        jj_consume_token(29);
+        jj_consume_token(30);
         target_const = jj_consume_token(NUMBER);
                                                                                                         vList.add(target_const.image);
       }
@@ -239,8 +244,15 @@ public class QueryParser implements QueryParserConstants {
       jj_consume_token(-1);
       throw new ParseException();
     }
-    jj_consume_token(27);
+    jj_consume_token(28);
      {if (true) return vList;}
+    throw new Error("Missing return statement in function");
+  }
+
+  static final public String index() throws ParseException {
+   Token component = null;
+    component = jj_consume_token(INDEX);
+                           {if (true) return component.image.substring(1, component.image.length() - 1);}
     throw new Error("Missing return statement in function");
   }
 
@@ -251,6 +263,7 @@ public class QueryParser implements QueryParserConstants {
     Token operator = null;
     boolean is = true;
     boolean in = true;
+    String indexString = null;
     List<String> targetList = null;
     jj_consume_token(IDENT);
     label_7:
@@ -258,8 +271,8 @@ public class QueryParser implements QueryParserConstants {
       switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
       case ANY:
       case ALL:
-      case THIS:
-      case 28:
+      case INDEX:
+      case 29:
         ;
         break;
       default:
@@ -267,8 +280,8 @@ public class QueryParser implements QueryParserConstants {
         break label_7;
       }
       switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
-      case 28:
-        jj_consume_token(28);
+      case 29:
+        jj_consume_token(29);
         component = jj_consume_token(IDENT);
                                           attribute.add(component.image);
         break;
@@ -280,9 +293,9 @@ public class QueryParser implements QueryParserConstants {
         jj_consume_token(ALL);
                                                                                                                       attribute.add("*");
         break;
-      case THIS:
-        jj_consume_token(THIS);
-                                                                                                                                                       attribute.add("0");
+      case INDEX:
+        indexString = index();
+                                                                                                                                                                        attribute.add(indexString);
         break;
       default:
         jj_la1[13] = jj_gen;
@@ -362,7 +375,7 @@ public class QueryParser implements QueryParserConstants {
       jj_la1_init_0();
    }
    private static void jj_la1_init_0() {
-      jj_la1_0 = new int[] {0x80000,0x60,0x180,0x200,0x800,0x1000,0x4080000,0x10040000,0x10040000,0x20000000,0x20000000,0x300000,0x10070000,0x10070000,0x380000,0x8000,0x406000,};
+      jj_la1_0 = new int[] {0x100000,0xe0,0x300,0x400,0x1000,0x2000,0x8100000,0x20080000,0x20080000,0x40000000,0x40000000,0x600000,0x200e0000,0x200e0000,0x700000,0x10000,0x80c000,};
    }
 
   /** Constructor with InputStream. */
@@ -500,7 +513,7 @@ public class QueryParser implements QueryParserConstants {
   /** Generate ParseException. */
   static public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[30];
+    boolean[] la1tokens = new boolean[31];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
@@ -514,7 +527,7 @@ public class QueryParser implements QueryParserConstants {
         }
       }
     }
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < 31; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;

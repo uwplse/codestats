@@ -20,6 +20,7 @@ TOKEN :
 {
   < EXISTS : "exists">
 | < COUNT : "count">
+| < HYBRID: "hybrid" >
 | < STMT : "statement">
 | < EXPR : "expression">
 | < WITHIN : "within">
@@ -31,7 +32,7 @@ TOKEN :
 | < NOT : "not" >
 | < ANY : "[?]" >
 | < ALL : "[*]" >
-| < THIS : "[0]" >
+| < INDEX : "[" (["0"-"9"])+ "]" >
 | < IDENT : (["A"-"Z", "a"-"z", "_"])+ >
 | < STRING : "'" (~["'"])* "'" >
 | < NUMBER : (["0"-"9"])+ >
@@ -56,7 +57,7 @@ Query block() :
     PredicateMirror pred = null;
 }
 {
-    (name = <IDENT>) ":" (<EXISTS> { metric = Metric.EXISTS; } | <COUNT> { metric = Metric.SUM; })
+    (name = <IDENT>) ":" (<EXISTS> { metric = Metric.EXISTS; } | <COUNT> { metric = Metric.SUM; } | <HYBRID> { metric = Metric.HYBRID; })
     (<EXPR> { target = QueryTarget.EXPRESSION; } | <STMT> { target = QueryTarget.STATEMENT; })
     <IDENT> [<WITHIN> (deriving = <IDENT>)] <WHERE> "{" (pred = predicate()) "}"
     { return new Query(name.image, deriving == null ? null : deriving.image, metric, target, pred); }
@@ -106,9 +107,10 @@ List<String> detList() :
 {
   List<String> attribute = new ArrayList<String>();
   Token component = null;
+  String indexString = null;
 }
 {
-  <IDENT> ( "." (component = <IDENT>) { attribute.add(component.image); } | <THIS> { attribute.add("0"); } )*
+  <IDENT> ( "." (component = <IDENT>) { attribute.add(component.image); } | (indexString = index()) { attribute.add(indexString); } )*
   {
     return attribute;
   }
@@ -130,6 +132,14 @@ List<String> valueList() :
     
 }
 
+String index() :
+{
+   Token component = null;
+}
+{
+   (component = <INDEX>) { return component.image.substring(1, component.image.length() - 1); }
+}
+
 PredicateMirror atom() :
 {
     List<String> attribute = new ArrayList<String>();
@@ -138,10 +148,11 @@ PredicateMirror atom() :
     Token operator = null;
     boolean is = true;
     boolean in = true;
+    String indexString = null;
     List<String> targetList = null;
 }
 {
-    <IDENT> ( "." (component = <IDENT>) { attribute.add(component.image); } | <ANY> { attribute.add("?"); } | <ALL> { attribute.add("*"); } | <THIS> { attribute.add("0"); } )*
+    <IDENT> ( "." (component = <IDENT>) { attribute.add(component.image); } | <ANY> { attribute.add("?"); } | <ALL> { attribute.add("*"); } | (indexString = index()) { attribute.add(indexString); } )*
     (
       ((operator = <OPERATOR>) (target = <STRING> | target = <NUMBER> | targetList = detList()))
       | (<IS> { is = true; } [ <NOT> { is = false; } ]) (target = <IDENT>)

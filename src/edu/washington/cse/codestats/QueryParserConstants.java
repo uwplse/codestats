@@ -15,37 +15,39 @@ public interface QueryParserConstants {
   /** RegularExpression Id. */
   int COUNT = 6;
   /** RegularExpression Id. */
-  int STMT = 7;
+  int HYBRID = 7;
   /** RegularExpression Id. */
-  int EXPR = 8;
+  int STMT = 8;
   /** RegularExpression Id. */
-  int WITHIN = 9;
+  int EXPR = 9;
   /** RegularExpression Id. */
-  int WHERE = 10;
+  int WITHIN = 10;
   /** RegularExpression Id. */
-  int AND = 11;
+  int WHERE = 11;
   /** RegularExpression Id. */
-  int OR = 12;
+  int AND = 12;
   /** RegularExpression Id. */
-  int IS = 13;
+  int OR = 13;
   /** RegularExpression Id. */
-  int IN = 14;
+  int IS = 14;
   /** RegularExpression Id. */
-  int NOT = 15;
+  int IN = 15;
   /** RegularExpression Id. */
-  int ANY = 16;
+  int NOT = 16;
   /** RegularExpression Id. */
-  int ALL = 17;
+  int ANY = 17;
   /** RegularExpression Id. */
-  int THIS = 18;
+  int ALL = 18;
   /** RegularExpression Id. */
-  int IDENT = 19;
+  int INDEX = 19;
   /** RegularExpression Id. */
-  int STRING = 20;
+  int IDENT = 20;
   /** RegularExpression Id. */
-  int NUMBER = 21;
+  int STRING = 21;
   /** RegularExpression Id. */
-  int OPERATOR = 22;
+  int NUMBER = 22;
+  /** RegularExpression Id. */
+  int OPERATOR = 23;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -59,6 +61,7 @@ public interface QueryParserConstants {
     "\"\\r\"",
     "\"exists\"",
     "\"count\"",
+    "\"hybrid\"",
     "\"statement\"",
     "\"expression\"",
     "\"within\"",
@@ -70,7 +73,7 @@ public interface QueryParserConstants {
     "\"not\"",
     "\"[?]\"",
     "\"[*]\"",
-    "\"[0]\"",
+    "<INDEX>",
     "<IDENT>",
     "<STRING>",
     "<NUMBER>",

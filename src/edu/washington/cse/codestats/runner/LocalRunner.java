@@ -20,7 +20,8 @@ import edu.washington.cse.codestats.hadoop.StatMapper;
 public class LocalRunner {
 	public static void main(final String[] args) throws FileNotFoundException, IOException, ParseException, TokenMgrError, 
 		ClassNotFoundException, InstantiationException, IllegalAccessException, InterruptedException {
-		final CompiledQuery q = Compiler.compile(args[0]);
+		final String queryText = Runner.readQuery(args[0]);
+		final CompiledQuery q = Compiler.compile(queryText);
 		final ClassLoader cl = new URLClassLoader(new URL[]{q.getJarFile().toURI().toURL()});
 		final QueryInterpreter qi = (QueryInterpreter) cl.loadClass(q.getInterpreterName()).newInstance();
 		final StatMapper mp = new StatMapper();

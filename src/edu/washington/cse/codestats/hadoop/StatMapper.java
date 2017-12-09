@@ -317,7 +317,7 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 				recordFailedMethod(context, m, e);
 				continue;
 			}
-			writeMethodResults(context);
+			writeMethodResults(context, m);
 		}
 		return cls;
 	}
@@ -329,8 +329,9 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 		context.getCounter(counter).increment(1L);
 	}
 
-	private void writeMethodResults(final Context context) throws IOException, InterruptedException {
+	private void writeMethodResults(final Context context, final SootMethod m) throws IOException, InterruptedException {
 		if(context == null) {
+			System.out.println("Results for " + m);
 			cm.dump();
 			return;
 		}

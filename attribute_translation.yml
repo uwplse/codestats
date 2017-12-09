@@ -21,6 +21,8 @@ value:
       return "InstanceInvoke";
     } else if({0} instanceof soot.jimple.Constant) {
        return "Constant";
+    } else if({0} instanceof soot.jimple.NewArrayExpr) {
+       return "NewArray";
     } else {
        return "Other";
     }
