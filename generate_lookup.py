@@ -11,10 +11,10 @@ type_table = {}
 for (k, v) in d.iteritems():
     type_table[k] = v["type"]
 
-def dump_trait(target, trait_host, trait_name):
+def dump_trait(target, trait_name):
     print r'{0}.put("{1}", "{2}", new InlineTranslator({3}));'.format(
         "TRAITS",
-        target, trait_name, json.dumps(trans[trait_host][trait_name])
+        target, trait_name, json.dumps(trans[target][trait_name])
     )
 
 def translate_multine(multi_line):
@@ -62,15 +62,9 @@ def dump_attr_list(target, attr_host):
             dump_attr(target, attr_host, attr[0], attr[1])
 
 def dump_value_traits(v):
-    it = v
-    while True:
-        if "traits" in d[it]:
-            for t in d[it]["traits"]:
-                dump_trait(v, it, t)
-        if "extends" in d[it]:
-            it = d[it]["extends"]
-        else:
-            return
+    if "traits" in d[v]:
+        for t in d[v]["traits"]:
+            dump_trait(v, t)
 
 transitive_closure = dict()
 upper_closure = dict()

@@ -8,6 +8,8 @@ value:
     - "null"
     - "constant"
     - "local"
+    - "this"
+    - "arg"
 method_call:
   type: "soot.jimple.InvokeExpr"
   extends: "value"
@@ -27,6 +29,8 @@ method:
     - [ "*paramTypes", "STRING" ]
     - [ "name", "STRING" ]
     - [ "signature", "STRING" ]
+  traits:
+    - "static"
 binop:
   extends: value
   type: "soot.jimple.internal.AbstractBinopExpr"

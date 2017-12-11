@@ -26,11 +26,12 @@ public class BlockTranslator implements Translator {
 	}
 
 	@Override
-	public String translate(final String casted, final String containingType, final String currAttr, final CompileContext ctxt) {
+	public String translate(final String casted, final String containingType, final String currAttr, final CompileContext ctxt, final String contextName) {
 		final String methodName = String.format("%s_%s_%d", containingType, currAttr, id);
-		final String helperMethod = String.format("public %s %s(%s arg) { %s }", returnType, methodName, inputType, methodBody.replaceAll("\\{0\\}", "arg"));
+		final String substBody = methodBody.replaceAll("\\{0\\}", "arg").replaceAll("\\{1\\}", "CONTEXT");
+		final String helperMethod = String.format("public %s %s(%s arg, %s CONTEXT) { %s }", returnType, methodName, inputType, QueryContext.class.getName(), substBody);
 		ctxt.addUtilityMethod(methodName, helperMethod);
-		return String.format("%s(%s)", methodName, casted);
+		return String.format("%s(%s, %s)", methodName, casted, contextName);
 	}
 
 }

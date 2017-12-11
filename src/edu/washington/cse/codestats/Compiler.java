@@ -37,6 +37,7 @@ import fj.F2;
 
 public class Compiler {
 	private static final String ARG_NAME = "toCheck";
+	private static final String CONTEXT_NAME = "ctxt";
 	private static final Table<String, String, Translator> ATTR = HashBasedTable.create();
 	private static final Table<String, String, Translator> TRAITS = HashBasedTable.create();
 	private static final Table<String, String, String> AVAIL_ATTR = HashBasedTable.create();
@@ -49,21 +50,12 @@ public class Compiler {
 		// START AUTO GENERATED CODE
 		ATTR.put("unop", "operand", new InlineTranslator("{0}.getOp()", "value"));
 		TYPE_TABLE.put("unop", "soot.jimple.internal.AbstractUnopExpr");
-		TRAITS.put("unop", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("unop", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("unop", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("method_call", "args", new InlineTranslator("{0}.getArgs()", "value"));
 		ATTR.put("method_call", "method", new InlineTranslator("{0}.getMethodRef()", "method"));
 		TYPE_TABLE.put("method_call", "soot.jimple.InvokeExpr");
-		TRAITS.put("method_call", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("method_call", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("method_call", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("array_ref", "index", new InlineTranslator("{0}.getIndex()", "value"));
 		ATTR.put("array_ref", "array", new InlineTranslator("{0}.getBase()", "value"));
 		TYPE_TABLE.put("array_ref", "soot.jimple.ArrayRef");
-		TRAITS.put("array_ref", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("array_ref", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("array_ref", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("binop", "operands", new BlockTranslator("soot.jimple.internal.AbstractBinopExpr", "java.util.List<soot.Value>", "// $BLOCK$\n" + 
 		"java.util.List<Value> toReturn = new java.util.ArrayList<>();\n" + 
 		"toReturn.add({0}.getOp1());\n" + 
@@ -73,15 +65,9 @@ public class Compiler {
 		ATTR.put("binop", "lop", new InlineTranslator("{0}.getOp1()", "value"));
 		ATTR.put("binop", "rop", new InlineTranslator("{0}.getOp2()", "value"));
 		TYPE_TABLE.put("binop", "soot.jimple.internal.AbstractBinopExpr");
-		TRAITS.put("binop", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("binop", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("binop", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("alloc", "allocType", new InlineTranslator("{0}.getBaseType().getClassName()", "STRING"));
 		ATTR.put("alloc", "constrArgs", new InlineTranslator("{0}.getArgs()", "value"));
 		TYPE_TABLE.put("alloc", "soot.grimp.internal.GNewInvokeExpr");
-		TRAITS.put("alloc", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("alloc", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("alloc", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("stmt", "kind", new BlockTranslator("soot.jimple.Stmt", "String", "// $BLOCK$\n" + 
 		"if({0} instanceof soot.jimple.AssignStmt) {\n" + 
 		"   return \"Assign\";\n" + 
@@ -93,31 +79,19 @@ public class Compiler {
 		"   return \"Other\";\n" + 
 		"}\n" + 
 		"\n", "STRING"));
-		ATTR.put("stmt", "host", new InlineTranslator("soot.Scene.v().grabMethod(new java.lang.String(toCheck.getTag(\"HostMethod\").getValue())).makeRef()", "method"));
+		ATTR.put("stmt", "host", new InlineTranslator("{1}.getContainingMethod()", "method"));
 		TYPE_TABLE.put("stmt", "soot.jimple.Stmt");
 		ATTR.put("return_stmt", "ret_val", new InlineTranslator("{0}.getOp()", "value"));
 		TYPE_TABLE.put("return_stmt", "soot.jimple.ReturnStmt");
 		ATTR.put("instance_fieldref", "base_ptr", new InlineTranslator("{0}.getBase()", "value"));
 		TYPE_TABLE.put("instance_fieldref", "soot.jimple.InstanceFieldRef");
-		TRAITS.put("instance_fieldref", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("instance_fieldref", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("instance_fieldref", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("instance_method_call", "receiver", new InlineTranslator("{0}.getBase()", "value"));
 		TYPE_TABLE.put("instance_method_call", "soot.jimple.InstanceInvokeExpr");
-		TRAITS.put("instance_method_call", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("instance_method_call", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("instance_method_call", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("fieldref", "field", new InlineTranslator("{0}.getFieldRef()", "field"));
 		TYPE_TABLE.put("fieldref", "soot.jimple.FieldRef");
-		TRAITS.put("fieldref", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("fieldref", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("fieldref", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("cast_expr", "cast_type", new InlineTranslator("{0}.getCastType().toString()", "STRING"));
 		ATTR.put("cast_expr", "castee", new InlineTranslator("{0}.getOp()", "value"));
 		TYPE_TABLE.put("cast_expr", "soot.jimple.CastExpr");
-		TRAITS.put("cast_expr", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("cast_expr", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("cast_expr", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("value", "kind", new BlockTranslator("soot.Value", "String", "// $BLOCK$\n" + 
 		"if({0} instanceof soot.jimple.ArrayRef) {\n" + 
 		"  return \"ArrayRead\";\n" + 
@@ -146,20 +120,19 @@ public class Compiler {
 		"}\n" + 
 		"\n", "STRING"));
 		ATTR.put("value", "type", new InlineTranslator("{0}.getType().toString()", "STRING"));
-		ATTR.put("value", "host", new InlineTranslator("soot.Scene.v().grabMethod(new java.lang.String(toCheck.getTag(\"HostMethod\").getValue())).makeRef()", "method"));
+		ATTR.put("value", "host", new InlineTranslator("{1}.getContainingMethod()", "method"));
 		TYPE_TABLE.put("value", "soot.Value");
 		TRAITS.put("value", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
 		TRAITS.put("value", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
 		TRAITS.put("value", "local", new InlineTranslator("{0} instanceof soot.Local"));
+		TRAITS.put("value", "this", new InlineTranslator("{0} == {1}.getThisLocal()"));
+		TRAITS.put("value", "arg", new InlineTranslator("{1}.getArgLocals().contains({0})"));
 		ATTR.put("assign_stmt", "lhs", new InlineTranslator("{0}.getLeftOp()", "value"));
 		ATTR.put("assign_stmt", "rhs", new InlineTranslator("{0}.getRightOp()", "value"));
 		TYPE_TABLE.put("assign_stmt", "soot.jimple.AssignStmt");
 		ATTR.put("new_array", "size", new InlineTranslator("{0}.getSize()", "value"));
 		ATTR.put("new_array", "baseType", new InlineTranslator("{0}.getBaseType().toString()", "STRING"));
 		TYPE_TABLE.put("new_array", "soot.jimple.NewArrayExpr");
-		TRAITS.put("new_array", "null", new InlineTranslator("{0} instanceof soot.jimple.NullConstant"));
-		TRAITS.put("new_array", "constant", new InlineTranslator("{0} instanceof soot.jimple.Constant"));
-		TRAITS.put("new_array", "local", new InlineTranslator("{0} instanceof soot.Local"));
 		ATTR.put("field", "type", new InlineTranslator("{0}.type().toString()", "STRING"));
 		ATTR.put("field", "name", new InlineTranslator("{0}.name()", "STRING"));
 		ATTR.put("field", "declaringClass", new InlineTranslator("{0}.declaringClass().getName()", "STRING"));
@@ -179,6 +152,7 @@ public class Compiler {
 		ATTR.put("method", "name", new InlineTranslator("{0}.name()", "STRING"));
 		ATTR.put("method", "signature", new InlineTranslator("{0}.getSignature()", "STRING"));
 		TYPE_TABLE.put("method", "soot.SootMethodRef");
+		TRAITS.put("method", "static", new InlineTranslator("{0}.isStatic()"));
 		AVAIL_ATTR.put("unop", "operand", "unop");
 		AVAIL_ATTR.put("unop", "kind", "value");
 		AVAIL_ATTR.put("unop", "type", "value");
@@ -186,6 +160,8 @@ public class Compiler {
 		AVAIL_TRAITS.put("unop", "null", "value");
 		AVAIL_TRAITS.put("unop", "constant", "value");
 		AVAIL_TRAITS.put("unop", "local", "value");
+		AVAIL_TRAITS.put("unop", "this", "value");
+		AVAIL_TRAITS.put("unop", "arg", "value");
 		AVAIL_ATTR.put("method_call", "args", "method_call");
 		AVAIL_ATTR.put("method_call", "method", "method_call");
 		AVAIL_ATTR.put("method_call", "receiver", "instance_method_call");
@@ -195,6 +171,8 @@ public class Compiler {
 		AVAIL_TRAITS.put("method_call", "null", "value");
 		AVAIL_TRAITS.put("method_call", "constant", "value");
 		AVAIL_TRAITS.put("method_call", "local", "value");
+		AVAIL_TRAITS.put("method_call", "this", "value");
+		AVAIL_TRAITS.put("method_call", "arg", "value");
 		AVAIL_ATTR.put("array_ref", "index", "array_ref");
 		AVAIL_ATTR.put("array_ref", "array", "array_ref");
 		AVAIL_ATTR.put("array_ref", "kind", "value");
@@ -203,12 +181,16 @@ public class Compiler {
 		AVAIL_TRAITS.put("array_ref", "null", "value");
 		AVAIL_TRAITS.put("array_ref", "constant", "value");
 		AVAIL_TRAITS.put("array_ref", "local", "value");
+		AVAIL_TRAITS.put("array_ref", "this", "value");
+		AVAIL_TRAITS.put("array_ref", "arg", "value");
 		AVAIL_ATTR.put("binop", "kind", "value");
 		AVAIL_ATTR.put("binop", "type", "value");
 		AVAIL_ATTR.put("binop", "host", "value");
 		AVAIL_TRAITS.put("binop", "null", "value");
 		AVAIL_TRAITS.put("binop", "constant", "value");
 		AVAIL_TRAITS.put("binop", "local", "value");
+		AVAIL_TRAITS.put("binop", "this", "value");
+		AVAIL_TRAITS.put("binop", "arg", "value");
 		AVAIL_ATTR.put("binop", "operands", "binop");
 		AVAIL_ATTR.put("binop", "lop", "binop");
 		AVAIL_ATTR.put("binop", "rop", "binop");
@@ -220,6 +202,8 @@ public class Compiler {
 		AVAIL_TRAITS.put("alloc", "null", "value");
 		AVAIL_TRAITS.put("alloc", "constant", "value");
 		AVAIL_TRAITS.put("alloc", "local", "value");
+		AVAIL_TRAITS.put("alloc", "this", "value");
+		AVAIL_TRAITS.put("alloc", "arg", "value");
 		AVAIL_ATTR.put("stmt", "method_call", "invoke_stmt");
 		AVAIL_ATTR.put("stmt", "ret_val", "return_stmt");
 		AVAIL_ATTR.put("stmt", "kind", "stmt");
@@ -236,6 +220,8 @@ public class Compiler {
 		AVAIL_TRAITS.put("instance_fieldref", "null", "value");
 		AVAIL_TRAITS.put("instance_fieldref", "constant", "value");
 		AVAIL_TRAITS.put("instance_fieldref", "local", "value");
+		AVAIL_TRAITS.put("instance_fieldref", "this", "value");
+		AVAIL_TRAITS.put("instance_fieldref", "arg", "value");
 		AVAIL_ATTR.put("instance_fieldref", "base_ptr", "instance_fieldref");
 		AVAIL_ATTR.put("instance_method_call", "args", "method_call");
 		AVAIL_ATTR.put("instance_method_call", "method", "method_call");
@@ -246,6 +232,8 @@ public class Compiler {
 		AVAIL_TRAITS.put("instance_method_call", "null", "value");
 		AVAIL_TRAITS.put("instance_method_call", "constant", "value");
 		AVAIL_TRAITS.put("instance_method_call", "local", "value");
+		AVAIL_TRAITS.put("instance_method_call", "this", "value");
+		AVAIL_TRAITS.put("instance_method_call", "arg", "value");
 		AVAIL_ATTR.put("fieldref", "field", "fieldref");
 		AVAIL_ATTR.put("fieldref", "kind", "value");
 		AVAIL_ATTR.put("fieldref", "type", "value");
@@ -253,6 +241,8 @@ public class Compiler {
 		AVAIL_TRAITS.put("fieldref", "null", "value");
 		AVAIL_TRAITS.put("fieldref", "constant", "value");
 		AVAIL_TRAITS.put("fieldref", "local", "value");
+		AVAIL_TRAITS.put("fieldref", "this", "value");
+		AVAIL_TRAITS.put("fieldref", "arg", "value");
 		AVAIL_ATTR.put("fieldref", "base_ptr", "instance_fieldref");
 		AVAIL_ATTR.put("cast_expr", "cast_type", "cast_expr");
 		AVAIL_ATTR.put("cast_expr", "castee", "cast_expr");
@@ -262,6 +252,8 @@ public class Compiler {
 		AVAIL_TRAITS.put("cast_expr", "null", "value");
 		AVAIL_TRAITS.put("cast_expr", "constant", "value");
 		AVAIL_TRAITS.put("cast_expr", "local", "value");
+		AVAIL_TRAITS.put("cast_expr", "this", "value");
+		AVAIL_TRAITS.put("cast_expr", "arg", "value");
 		AVAIL_ATTR.put("value", "operand", "unop");
 		AVAIL_ATTR.put("value", "args", "method_call");
 		AVAIL_ATTR.put("value", "method", "method_call");
@@ -280,6 +272,8 @@ public class Compiler {
 		AVAIL_TRAITS.put("value", "null", "value");
 		AVAIL_TRAITS.put("value", "constant", "value");
 		AVAIL_TRAITS.put("value", "local", "value");
+		AVAIL_TRAITS.put("value", "this", "value");
+		AVAIL_TRAITS.put("value", "arg", "value");
 		AVAIL_ATTR.put("value", "size", "new_array");
 		AVAIL_ATTR.put("value", "baseType", "new_array");
 		AVAIL_ATTR.put("value", "cast_type", "cast_expr");
@@ -297,6 +291,8 @@ public class Compiler {
 		AVAIL_TRAITS.put("new_array", "null", "value");
 		AVAIL_TRAITS.put("new_array", "constant", "value");
 		AVAIL_TRAITS.put("new_array", "local", "value");
+		AVAIL_TRAITS.put("new_array", "this", "value");
+		AVAIL_TRAITS.put("new_array", "arg", "value");
 		AVAIL_ATTR.put("field", "type", "field");
 		AVAIL_ATTR.put("field", "name", "field");
 		AVAIL_ATTR.put("field", "declaringClass", "field");
@@ -309,6 +305,7 @@ public class Compiler {
 		AVAIL_ATTR.put("method", "paramTypes", "method");
 		AVAIL_ATTR.put("method", "name", "method");
 		AVAIL_ATTR.put("method", "signature", "method");
+		AVAIL_TRAITS.put("method", "static", "method");
 	}
 	
 	public static class CompileContext {
@@ -360,13 +357,13 @@ public class Compiler {
 			@Override
 			public String f(final String a, final String b) {
 				if(!AVAIL_TRAITS.contains(b, trait)) {
-					throw new IllegalArgumentException();
+					throw new IllegalArgumentException(a + ", " + b + ", " + trait);
 				}
 				final String declaringType = AVAIL_TRAITS.get(b, trait);
 				final String javaType = TYPE_TABLE.get(declaringType);
 				final String casted = String.format("((%s)%s)", javaType, a);
 				final Translator t = TRAITS.get(declaringType, trait);
-				final String translated = t.translate(casted, declaringType, trait, ctxt);
+				final String translated = t.translate(casted, declaringType, trait, ctxt, CONTEXT_NAME);
 				if(!is) {
 					return "!(" + translated + ")";
 				}
@@ -439,7 +436,7 @@ public class Compiler {
 			if(i < attributeList.size() - 1 && isIndex(attributeList.get(i+1))) {
 				final String elemType = t.getOutputType();
 				final String elemJavaType = TYPE_TABLE.get(elemType);
-				final String toIterate = t.translate(casted, containingType, currAttr, ctxt);
+				final String toIterate = t.translate(casted, containingType, currAttr, ctxt, CONTEXT_NAME);
 				final String index = attributeList.get(i+1);
 				if(index.equals("*")) {
 					this.addForallExists(ctxt);
@@ -459,12 +456,12 @@ public class Compiler {
 					i++;
 				}
 			} else if(i == attributeList.size() - 2 && attributeList.get(i+1).equals("length")) {
-				accum = t.translate(casted, containingType, currAttr, ctxt) + ".size()";
+				accum = t.translate(casted, containingType, currAttr, ctxt, CONTEXT_NAME) + ".size()";
 				currType = "INT";
 				break;
 			} else {
 				final String newType = t.getOutputType();
-				accum = t.translate(casted, containingType, currAttr, ctxt);
+				accum = t.translate(casted, containingType, currAttr, ctxt, CONTEXT_NAME);
 				currType = newType;
 			}
 		}
@@ -490,6 +487,7 @@ public class Compiler {
 	}
 	
 	private static File compileProgram(final List<Query> prog) {
+		System.out.println(prog);
 		final StringBuilder sb = new StringBuilder(64);
     sb.append("package codestats;\n");
     sb.append("public class QueryInterpreterImpl implements edu.washington.cse.codestats.QueryInterpreter {\n");
@@ -559,7 +557,7 @@ public class Compiler {
 
 	private static void addInterpreter(final StringBuilder sb, final CompileContext context, final Compiler c, final List<Query> exprQueries,
 			final String javaType, final String startType, final String startTransformer) {
-		sb.append("public boolean interpret(String q, final ").append(javaType).append(" ").append(ARG_NAME).append(") {\n");
+		sb.append("public boolean interpret(String q, final ").append(javaType).append(" ").append(ARG_NAME).append(", final ").append(QueryContext.class.getName()).append(" ").append(CONTEXT_NAME).append(") {\n");
     for(final Query q : exprQueries) {
     	sb.append("if(q.equals(\"").append(q.name()).append("\")) {\n");
     	sb.append("return ").append(c.translatePredicate(ARG_NAME + startTransformer, startType, q.getPredicate(), context)).append(";");
@@ -664,34 +662,5 @@ public class Compiler {
 			}
 		}
 		return toReturn;
-	}
-	
-	public String value_kind_2(final soot.Value arg) { // $BLOCK$
-		if(arg instanceof soot.jimple.ArrayRef) {
-			return "ArrayRead";
-		} else if(arg instanceof soot.jimple.InstanceFieldRef) {
-			return "InstanceField";
-		} else if(arg instanceof soot.jimple.StaticFieldRef) {
-			return "StaticField";
-		} else if(arg instanceof soot.grimp.internal.GNewInvokeExpr) {
-			return "New";
-		} else if(arg instanceof soot.jimple.internal.AbstractBinopExpr) {
-			return "Binop";
-		} else if(arg instanceof soot.jimple.CastExpr) {
-			return "Cast";
-		} else if(arg instanceof soot.jimple.internal.AbstractUnopExpr) {
-			return "Unop";
-		} else if(arg instanceof soot.jimple.StaticInvokeExpr) {
-			return "StaticInvoke";
-		} else if(arg instanceof soot.jimple.InstanceInvokeExpr) {
-			return "InstanceInvoke";
-		} else if(arg instanceof soot.jimple.Constant) {
-			return "Constant";
-		} else if(arg instanceof soot.jimple.NewArrayExpr) {
-			return "NewArray";
-		} else {
-			return "Other";
-		}
-
 	}
 }

@@ -23,8 +23,8 @@ public class InlineTranslator implements Translator {
 	}
 
 	@Override
-	public String translate(final String casted, final String containingType, final String currAttr, final CompileContext ctxt) {
-		return templateString.replaceAll("\\{0\\}", casted);
+	public String translate(final String casted, final String containingType, final String currAttr, final CompileContext ctxt, final String contextName) {
+		return templateString.replaceAll("\\{0\\}", casted).replaceAll("\\{1\\}", contextName);
 	}
 
 }

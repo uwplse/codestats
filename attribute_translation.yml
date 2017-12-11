@@ -29,8 +29,10 @@ value:
   type: "{0}.getType().toString()"
   "null": "{0} instanceof soot.jimple.NullConstant"
   constant: "{0} instanceof soot.jimple.Constant"
-  host: &host "soot.Scene.v().grabMethod(new java.lang.String(toCheck.getTag(\"HostMethod\").getValue())).makeRef()"
+  host: &host "{1}.getContainingMethod()"
   "local": "{0} instanceof soot.Local"
+  "this": "{0} == {1}.getThisLocal()"
+  "arg": "{1}.getArgLocals().contains({0})"
 method_call:
   method: "{0}.getMethodRef()"
   args: "{0}.getArgs()"
@@ -48,6 +50,7 @@ method:
     return toReturn;
   name: "{0}.name()"
   signature: "{0}.getSignature()"
+  static: "{0}.isStatic()"
 binop:
   lop: "{0}.getOp1()"
   rop: "{0}.getOp2()"

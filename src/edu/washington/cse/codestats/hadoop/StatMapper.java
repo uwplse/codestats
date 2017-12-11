@@ -19,14 +19,17 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
+import soot.Body;
 import soot.ClassProvider;
 import soot.ClassSource;
 import soot.FoundFile;
 import soot.G;
+import soot.Local;
 import soot.PackManager;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
+import soot.SootMethodRef;
 import soot.SourceLocator;
 import soot.Unit;
 import soot.ValueBox;
@@ -35,15 +38,14 @@ import soot.grimp.Grimp;
 import soot.grimp.GrimpBody;
 import soot.jimple.Stmt;
 import soot.options.Options;
-import soot.tagkit.AttributeValueException;
-import soot.tagkit.Tag;
 import edu.washington.cse.codestats.CompiledQuery;
+import edu.washington.cse.codestats.QueryContext;
 import edu.washington.cse.codestats.QueryInterpreter;
 import edu.washington.cse.codestats.QueryTree;
 import edu.washington.cse.codestats.QueryTree.QueryGroup;
 import edu.washington.cse.codestats.shadow.EXISTS;
 import edu.washington.cse.codestats.shadow.SUM;
-import fj.F2;
+import fj.F3;
 import fj.function.Effect1;
 
 public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> {
@@ -70,6 +72,7 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 	private Constructor<?> classSourceConstructor;
 	private CountManager cm;
 	private InMemoryClassProvider inMemoryProvider;
+	private QueryContextImpl qc;
 	
 	@Override
 	protected void setup(final Context context) throws IOException, InterruptedException {
@@ -87,6 +90,7 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 	private void commonSetup() throws IOException {
 		this.cm = new CountManager();
 		this.inMemoryProvider = new InMemoryClassProvider();
+		this.qc = new QueryContextImpl();
 		
 		try {
 			classSourceConstructor = Class.forName("soot.asm.AsmClassSource").getDeclaredConstructors()[0];
@@ -96,17 +100,17 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 		}
 	}
 	
-	private final F2<String, Stmt, Boolean> stmtQuery = new F2<String, Stmt, Boolean>() {
+	private final F3<String, Stmt, QueryContext, Boolean> stmtQuery = new F3<String, Stmt, QueryContext, Boolean>() {
 		@Override
-		public Boolean f(final String a, final Stmt b) {
-			return interpreter.interpret(a, b);
+		public Boolean f(final String a, final Stmt b, final QueryContext qc) {
+			return interpreter.interpret(a, b, qc);
 		}
 	};
 	
-	private final F2<String, ValueBox, Boolean> exprQuery = new F2<String, ValueBox, Boolean>() {
+	private final F3<String, ValueBox, QueryContext, Boolean> exprQuery = new F3<String, ValueBox, QueryContext, Boolean>() {
 		@Override
-		public Boolean f(final String a, final ValueBox b) {
-			return interpreter.interpret(a, b);
+		public Boolean f(final String a, final ValueBox b, final QueryContext qc) {
+			return interpreter.interpret(a, b, qc);
 		}
 	};
 	private String currentSplit;
@@ -228,6 +232,42 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 		}
 	}
 	
+	private static class QueryContextImpl implements QueryContext {
+		private Local thisCache;
+		private List<Local> pCache;
+		private SootMethodRef ref;
+		private Body body;
+
+		public void setMethod(final SootMethodRef ref, final Body b) {
+			this.pCache = null;
+			this.thisCache = null;
+			this.ref = ref;
+			this.body = b;
+		}
+
+		@Override
+		public SootMethodRef getContainingMethod() {
+			return this.ref;
+		}
+
+		@Override
+		public Local getThisLocal() {
+			if(this.thisCache != null) {
+				return this.thisCache;
+			}
+			return (this.thisCache = this.body.getThisLocal());
+		}
+
+		@Override
+		public List<Local> getArgLocals() {
+			if(this.pCache != null) {
+				return this.pCache;
+			}
+			return (this.pCache = this.body.getParameterLocals());
+		}
+		
+	}
+	
 	@Override
 	protected void map(final Text key, final BytesWritable value, final Context context) throws IOException, InterruptedException {
 		SootClass cls = null;
@@ -275,29 +315,15 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 					continue;
 				}
 				final GrimpBody body = Grimp.v().newBody(m.retrieveActiveBody(), "gb");
+				this.qc.setMethod(m.makeRef(), body);
 				m.releaseActiveBody();
 				PackManager.v().getPack("gop").apply(body);
-				final Tag hostTag = new Tag() {
-					private final byte[] sigBytes = m.getSignature().getBytes();;
-
-					@Override
-					public byte[] getValue() throws AttributeValueException {
-						return sigBytes;
-					}
-					
-					@Override
-					public String getName() {
-						return "HostMethod";
-					}
-				};
 				for(final Unit u : body.getUnits()) {
 					final Stmt s = (Stmt) u;
-					s.addTag(hostTag);
 					this.runQueryTree(s, qt.getStmtExists(), this.stmtQuery, cm.stmtFoundFlag());
 					this.runQueryTree(s, qt.getStmtSums(), this.stmtQuery, cm.stmtSumIncrementer());
 					if(qt.hasExprQueries()) {
 						for(final ValueBox vb : s.getUseBoxes()) {
-							vb.addTag(hostTag);
 							this.runQueryTree(vb, qt.getExprExists(), this.exprQuery, cm.exprFoundFlag());
 							this.runQueryTree(vb, qt.getExprSums(), this.exprQuery, cm.exprSumIncrementer());
 						}
@@ -384,16 +410,16 @@ public class StatMapper extends Mapper<Text, BytesWritable, Text, LongWritable> 
 		e.printStackTrace();
 	}
 	
-	private <T, M> void runQueryTree(final T val, final QueryGroup<T, M> qg, final F2<String, T, Boolean> interp, final MatchEffect<T, M> me) {
+	private <T, M> void runQueryTree(final T val, final QueryGroup<T, M> qg, final F3<String, T, QueryContext, Boolean> interp, final MatchEffect<T, M> me) {
 		for(final String root : qg.roots()) {
 			this.runQueryTree(val, root, qg, interp, me);
 		}
 	}
 	
-	private <T, M> void runQueryTree(final T val, final String q, final QueryGroup<T, M> qg, final F2<String, T, Boolean> interp, final MatchEffect<T, M> me) {
+	private <T, M> void runQueryTree(final T val, final String q, final QueryGroup<T, M> qg, final F3<String, T, QueryContext, Boolean> interp, final MatchEffect<T, M> me) {
 		boolean matches;
 		try {
-			matches = interp.f(q, val);
+			matches = interp.f(q, val, qc);
 		} catch(final Exception e) {
 			throw new InterpreterFailedException(e);
 		}
