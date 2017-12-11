@@ -487,7 +487,6 @@ public class Compiler {
 	}
 	
 	private static File compileProgram(final List<Query> prog) {
-		System.out.println(prog);
 		final StringBuilder sb = new StringBuilder(64);
     sb.append("package codestats;\n");
     sb.append("public class QueryInterpreterImpl implements edu.washington.cse.codestats.QueryInterpreter {\n");
