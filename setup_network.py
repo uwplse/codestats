@@ -1,6 +1,6 @@
 import subprocess, json, pickle
 
-target_sg = "sg-f620fe8a"
+target_sg = "REPLACE_ME"
 
 my_ip = subprocess.check_output(["curl", "-s", "https://api.ipify.org"])
 ip_perms = json.loads(subprocess.check_output(["aws", "ec2", "describe-security-groups", "--group-ids", target_sg]))["SecurityGroups"][0]["IpPermissions"]

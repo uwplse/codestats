@@ -36,7 +36,7 @@ public class Runner {
 		final Configuration conf = new Configuration();
 		final FileSystem fs = FileSystem.get(conf);
 		final Job j = Job.getInstance(conf, "code stats: " + queryName);
-		for(final FileStatus stat : fs.listStatus(new Path("/user/jtoman/codestat-jars"))) {
+		for(final FileStatus stat : fs.listStatus(new Path("/user/codestats/codestat-jars"))) {
 			j.addArchiveToClassPath(stat.getPath());
 		}
 		j.setMapperClass(StatMapper.class);
@@ -50,8 +50,8 @@ public class Runner {
 		j.setMapOutputKeyClass(Text.class);
 		j.setMapOutputValueClass(LongWritable.class);
 		SequenceFileInputFormat.setInputDirRecursive(j, true);
-		SequenceFileInputFormat.addInputPaths(j, "/user/jtoman/inputs");
-		final Path outputPath = new Path("/user/jtoman/output/" + queryName);
+		SequenceFileInputFormat.addInputPaths(j, "/user/codestats/inputs");
+		final Path outputPath = new Path("/user/codestats/output/" + queryName);
 		fs.delete(outputPath, true);
 		FileOutputFormat.setOutputPath(j, outputPath);
 		j.setOutputKeyClass(Text.class);
